@@ -122,7 +122,7 @@ for alpha in alphas:
 
         for t in range(max_steps):
             # optional - render episodes
-            #env.render();
+            env.render();
 
             action = agent.act(state, theta);
 
