@@ -1,0 +1,8 @@
+.*.sw*
+*.pyc
+temp*
+*/__pycache__/*
+*/en
+*.aux
+*.log
+*.synctex.gz
