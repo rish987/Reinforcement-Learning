@@ -136,7 +136,6 @@ for alpha in alphas:
             R.append(reward);
 
             if done:
-                print("here");
                 break;
 
         # total time of episode
