@@ -17,7 +17,7 @@ ALPHA_COLOR_MULT = 0.3;
 # - 
 
 # Policy agent with various utility functions for use in emulation/training.
-class MCPG_agent(object):
+class Agent(object):
     def __init__(self, action_space):
         self.action_space = action_space;
         self.num_actions = action_space.n;
@@ -92,7 +92,7 @@ class MCPG_agent(object):
 
 # - initialize training -
 env = gym.make('CartPole-v0')
-agent = MCPG_agent(env.action_space)
+agent = Agent(env.action_space)
 
 MAX_EPISODES = 400;
 RUNS = 10;
