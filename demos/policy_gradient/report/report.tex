@@ -2,8 +2,10 @@
 \setlength\parindent{0pt}
 
 \usepackage{pgfplots}
+\usepackage{amsthm, amsmath, amssymb, verbatim, enumerate, mathtools, algorithm}
 \usepackage{pgf}
 \usepackage{hyperref}
+\def\labelitemi{--}
 \pgfplotsset{compat=newest}
 
 \pagestyle{empty}
@@ -18,8 +20,48 @@
     \item The code for this project is available at: 
 \url{https://github.com/rish987/Reinforcement-Learning/blob/master/demos/policy_gradient/code/policy_gradient.py}.
 \end{itemize}
-\subsection*{Implementation}
+\subsection*{Implementation Details}
+\begin{itemize}
+    \item Each state-action pair is converted to the feature vector $x(s, a)$.
+        Letting $S_{obs}$ and $S_{act}$ be the size of the observation and
+        action spaces, respectively, the size of the vector is $S_{obs} \times
+        S_{act}$, where all features are $0$ except for the $S_{obs}$ features
+        starting at index $S_{obs} \times a$, which are set to the
+        environment's parameterization of $s$.
+    \begin{itemize}
+        \item In this case, $S_{obs} = 4$ and $S_{act} = 2$.
+    \end{itemize}
+    \item The policy function $\pi(a | s, \theta)$ performs the softmax on a
+        parameterized linear mapping of feature vectors:
+        \begin{align*}
+            \pi(a | s, \theta) &= \frac{e^{\theta^T x(s, a)}}
+            {\sum_{b} e^{\theta^T x(s, b)}}\\
+        \end{align*}
+    \item The gradient of this policy function, used in the parameter update,
+        was found to be:
+        \begin{align*}
+            \nabla \pi(a | s, \theta) &= 
+            \frac{e^{\theta^T x(s, a)}}{(\sum_{b} e^{\theta^T x(s, b)}) ^2}
+            \left(x(s, a) \sum_{b}
+            e^{\theta^T x(s, b)} - \left(\sum_{b} e^{\theta^T x(s, b)} 
+            x(s, b)\right)
+            \right)
+        \end{align*}
+\end{itemize}
+\subsection*{Results}
 \begin{centering}
     \scalebox{0.6}{\input{MCPG_agent.pgf}} \\
 \end{centering}
+\begin{itemize}
+    \item The results can be summarized as follows:
+    \begin{itemize}
+        \item The largest learning rate initiates learning quickly
+            but fails to converge to an optimal policy, likely because it
+            overshoots the mark at each parameter update.
+        \item The smallest learning rate learns the policy slowly because of
+            its smaller updates but does reach a near-optimal policy.
+        \item The middle learning rate finds a near-optimal policy relatively
+            quickly.
+    \end{itemize}
+\end{itemize}
 \end{document}

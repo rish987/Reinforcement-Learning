@@ -1,0 +1,54 @@
+\documentclass[a4paper]{article}
+\setlength\parindent{0pt}
+
+\usepackage{pgfplots}
+\usepackage{amsthm, amsmath, amssymb, verbatim, enumerate, mathtools, algorithm}
+\usepackage{pgf}
+\usepackage{hyperref}
+\def\labelitemi{--}
+\pgfplotsset{compat=newest}
+
+\pagestyle{empty}
+
+\title{Deep Q-Network Demo}
+\author{Rishikesh Vaishnav}
+\begin{document}
+\maketitle
+\section*{Monte Carlo Implementation}
+\subsection*{Code}
+\begin{itemize}
+    \item The code for this project is available at: 
+    % TODO
+\url{https://github.com/rish987/Reinforcement-Learning/blob/master/demos/policy_gradient/code/policy_gradient.py}.
+\end{itemize}
+\subsection*{Implementation Details}
+\begin{itemize}
+    \item Unlike the Atari gameplay environment described by Mnih et. al., the
+        pole-cart environment is not perceptually aliased. That is, the current
+        observation of the state is theoretically all that is needed to
+        determine an optimal value. Therefore, the current state can be equated
+        with the current observation, without taking into account past
+        observations and actions.
+    \item Because the observation space of the Atari gameplay environment is
+        much larger than the pole-cart environment, it should suffice to use a
+        smaller ANN model.
+    \item Because the observation space of the pole-cart environment is small
+        and not spatially correlated, it is not helpful to use a convolutional
+        neural network.
+\end{itemize}
+\subsection*{Results}
+\begin{centering}
+\end{centering}
+\begin{itemize}
+    \item The results can be summarized as follows:
+    \begin{itemize}
+        \item The largest learning rate initiates learning quickly
+            but fails to converge to an optimal policy, likely because it
+            overshoots the mark at each parameter update.
+        \item The smallest learning rate learns the policy slowly because of
+            its smaller updates but does reach a near-optimal policy.
+        \item The middle learning rate finds a near-optimal policy relatively
+            quickly.
+    \end{itemize}
+\end{itemize}
+\end{document}

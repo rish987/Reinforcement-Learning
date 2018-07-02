@@ -1,0 +1,75 @@
+\documentclass[a4paper]{article}
+\setlength\parindent{0pt}
+
+\usepackage{pgfplots}
+\usepackage{amsthm, amsmath, amssymb, verbatim, enumerate, mathtools, algorithm}
+\usepackage{pgf}
+\usepackage{hyperref}
+\def\labelitemi{--}
+\pgfplotsset{compat=newest}
+
+\pagestyle{empty}
+
+\title{Function-Approximated Q-Learning Demo}
+\author{Rishikesh Vaishnav}
+\begin{document}
+\maketitle
+\section*{Basic Implementation}
+\subsection*{Code}
+\begin{itemize}
+    \item The code for this project is available at: 
+    % TODO 
+    \url{}.
+\end{itemize}
+\subsection*{Implementation Details}
+\begin{itemize}
+    \item This algorithm implements function approximation with Q-learning
+        where the behavioral policy is $\epsilon$-greedy w.r.t. the current
+        state-value approximation $\hat{q}(s, a; \theta)$.
+    \item Although not theoretically proven to converge, this algorithm has 
+        been known to converge empirically.
+    \item Each state-action pair is converted to the feature vector $x(s, a)$.
+        Letting $S_{obs}$ and $S_{act}$ be the size of the observation and
+        action spaces, respectively, the size of the vector is $S_{obs} \times
+        S_{act}$, where all features are $0$ except for the $S_{obs}$ features
+        starting at index $S_{obs} \times a$, which are set to the
+        environment's parameterization of $s$.
+        \begin{itemize}
+            \item In this case, $S_{obs} = 4$ and $S_{act} = 2$.
+        \end{itemize}
+    \item The action-value function $\hat{q}(s, a; \theta)$ performs a
+        parameterized linear mapping of feature vectors:
+        \begin{align*}
+            \hat{q}(s, a; \theta) &= \theta^T x(s, a)
+        \end{align*}
+    \item The gradient of the action-value function is:
+    \begin{align*}
+        \nabla_{\theta} \hat{q}(s, a; \theta) &= x(s, a)
+    \end{align*}
+    \item Simplifying the update rule:
+    \begin{align*}
+        \theta_{t + 1} &= \theta_{t} + \alpha
+        \left( 
+        R_{t + 1} + \gamma \max_{a}\hat{q}(S_{t + 1}, a, \theta_{t}) - 
+        \hat{q}(S_{t}, A_{T}, \theta_{t})
+        \right)
+        \nabla_{\theta} \hat{q}(S_{t}, A_{t}; \theta) \\
+        &= \theta_{t} + \alpha
+        \left( 
+        R_{t + 1} + \gamma \max_{a}\hat{q}(S_{t + 1}, a, \theta_{t}) - 
+        \hat{q}(S_{t}, A_{T}, \theta_{t})
+        \right)
+        x(S_t, A_t)
+    \end{align*}
+\end{itemize}
+\subsection*{Results}
+\begin{centering}
+\end{centering}
+\begin{itemize}
+    \item The results can be summarized as follows:
+    % TODO
+    \begin{itemize}
+        \item 
+    \end{itemize}
+\end{itemize}
+\end{document}
