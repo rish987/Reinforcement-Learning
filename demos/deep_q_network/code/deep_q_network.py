@@ -37,14 +37,12 @@ hidden_layer_size = 8;
 # -
 
 # - model functions -
-# TODO action_value()
 def action_value(state, action, theta):
     T = action_values(state, action, theta):
 
     # TODO optimize for not calculating all T;
     return T[action];
 
-# TODO action_values()
 def action_values(state, action, theta):
     # TODO ensure state is a 1d vector
     print("state shape (should be 1d): " + str(state.shape));

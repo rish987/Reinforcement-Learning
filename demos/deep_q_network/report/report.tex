@@ -14,12 +14,12 @@
 \author{Rishikesh Vaishnav}
 \begin{document}
 \maketitle
-\section*{Monte Carlo Implementation}
+\section*{Basic Implementation}
 \subsection*{Code}
 \begin{itemize}
     \item The code for this project is available at: 
     % TODO
-\url{https://github.com/rish987/Reinforcement-Learning/blob/master/demos/policy_gradient/code/policy_gradient.py}.
+\url{https://github.com/rish987/Reinforcement-Learning/blob/master/demos/deep_q_network/code/deep_q_network.py}.
 \end{itemize}
 \subsection*{Implementation Details}
 \begin{itemize}
@@ -35,6 +35,26 @@
     \item Because the observation space of the pole-cart environment is small
         and not spatially correlated, it is not helpful to use a convolutional
         neural network.
+    \item The model is a simple vanilla neural network with one hidden layer:
+    \begin{itemize}
+        \item Let $M$ be the number of nodes in the hidden layer.
+        \item Let $K$ be the number of output nodes (i.e., number of actions).
+        \item The hidden layer is calculated as:
+        \begin{align*}
+            Z_{m} &= \sigma(\alpha^{T}_{m}x_{(1)}(s)), m = 1, \dots, M
+        \end{align*}
+        \item The output layer is calculated as:
+        \begin{align*}
+            \hat{q}(s, a_i; \theta) &= \beta_{0i} + \beta^{T}_{i}Z, i = 1, \dots, K
+        \end{align*}
+    \end{itemize}
+    \item Solving for the gradient of the sample error:
+    \begin{align*}
+        % TODO bias terms?
+        \nabla_{\theta}J_j(\theta) = -2(y_j - \hat{q}(s_j, a_j, \theta))
+        \nabla_{\theta}\hat{q}(s_j, a_j, \theta)
+        \frac{d}{d\beta_{}}\hat{q}(s_j, a_j, \theta) 
+    \end{align*}
 \end{itemize}
 \subsection*{Results}
 \begin{centering}
@@ -42,13 +62,8 @@
 \begin{itemize}
     \item The results can be summarized as follows:
     \begin{itemize}
-        \item The largest learning rate initiates learning quickly
-            but fails to converge to an optimal policy, likely because it
-            overshoots the mark at each parameter update.
-        \item The smallest learning rate learns the policy slowly because of
-            its smaller updates but does reach a near-optimal policy.
-        \item The middle learning rate finds a near-optimal policy relatively
-            quickly.
+        % TODO
+        \item 
     \end{itemize}
 \end{itemize}
 \end{document}
