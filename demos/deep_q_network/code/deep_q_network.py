@@ -1,8 +1,8 @@
 # File: deep_q_network.py 
 # Author(s): Rishikesh Vaishnav
 # Created: 29/06/2018
-
 import numpy as np;
+import random;
 import matplotlib.pyplot as plt;
 from labellines import labelLine, labelLines;
 
@@ -39,11 +39,24 @@ hidden_layer_size = 8;
 # - model functions -
 # TODO action_value()
 def action_value(state, action, theta):
+    T = action_values(state, action, theta):
+
+    # TODO optimize for not calculating all T;
+    return T[action];
+
+# TODO action_values()
+def action_values(state, action, theta):
+    # TODO ensure state is a 1d vector
+    print("state shape (should be 1d): " + str(state.shape));
     # hidden layer values
     Z = sigma(np.matmul(alpha_matrix(theta), state[:, None]));
+    # TODO ensure Z is a 1d vector
+    print("Z shape (should be 1d): " + str(Z.shape));
+
+    # return action values
+    return np.matmul(beta_matrix(theta), Z[:, None]);
 
 # TODO action_value_grad()
-# TODO action_values()
 
 def alpha_matrix(theta):
     alpha_mat = ab_matrix(theta, 0, num_observations, hidden_layer_size);
@@ -84,6 +97,7 @@ def DQN_training_run(alpha):
     target_outdate_count = 0;
 
     # TODO initialize replay memory
+    replay_mem = [];
 
     # continue training until cutoff
     for ep_i in range(MAX_EPISODES):
