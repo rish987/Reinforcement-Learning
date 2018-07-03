@@ -41,7 +41,7 @@
         \item Let $K$ be the number of output nodes (i.e., number of actions).
         \item The hidden layer is calculated as:
         \begin{align*}
-            Z_{m} &= \sigma(\alpha^{T}_{m}x_{(1)}(s)), m = 1, \dots, M
+            Z_{m} &= \sigma(\alpha^{T}_{0m} + \alpha^{T}_{m}x(s)), m = 1, \dots, M
         \end{align*}
         \item The output layer is calculated as:
         \begin{align*}
@@ -49,11 +49,25 @@
         \end{align*}
     \end{itemize}
     \item Solving for the gradient of the sample error:
-    \begin{align*}
         % TODO bias terms?
-        \nabla_{\theta}J_j(\theta) = -2(y_j - \hat{q}(s_j, a_j, \theta))
-        \nabla_{\theta}\hat{q}(s_j, a_j, \theta)
-        \frac{d}{d\beta_{}}\hat{q}(s_j, a_j, \theta) 
+    \begin{align*}
+        \nabla_{\theta}J_t(\theta) &= -2(y_t - \hat{q}(s_t, a_t, \theta))
+        \nabla_{\theta}\hat{q}(s_t, a_t, \theta)\\
+        \frac{d}{d\beta_{jk}}\hat{q}(s_t, a_t, \theta) &=
+        \begin{cases}
+            0 & k \ne a_t\\
+            \begin{cases}
+                1 & j = 0\\
+                \sigma(\alpha^{T}_{0j} + \alpha^{T}_{j}x(s_t)) & j > 0
+            \end{cases} &  k = a_t
+        \end{cases}, k = 1, \dots, K\\
+        \frac{d}{d\alpha_{im}}\hat{q}(s_t, a_t, \theta) &=
+        \beta_{mk}
+        \sigma'(\alpha^{T}_{0m} + \alpha^{T}_{m}x(s_t))
+        \begin{cases}
+            1 & i = 0\\
+            x(s_t)_{i} & i > 0
+        \end{cases}
     \end{align*}
 \end{itemize}
 \subsection*{Results}

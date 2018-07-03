@@ -19,13 +19,14 @@ env = gym.make('CartPole-v0')
 num_observations = env.observation_space.shape[0];
 num_actions = env.action_space.n;
 
-MAX_EPISODES = 800;
+MAX_EPISODES = 10000;
 RUNS = 1;
 MAX_STEPS = 200;
 
 # training parameters
 gamma = 1.0;
 alphas = [0.001, 0.01, 0.1];
+alphas = [0.001]#, 0.01, 0.1];
 # TODO? adjust
 epsilon = 0.1;
 C = 5;
@@ -38,43 +39,78 @@ hidden_layer_size = 8;
 
 # - model functions -
 def action_value(state, action, theta):
-    T = action_values(state, action, theta):
+    T = action_values(state, theta);
 
     # TODO optimize for not calculating all T;
     return T[action];
 
-def action_values(state, action, theta):
-    # TODO ensure state is a 1d vector
-    print("state shape (should be 1d): " + str(state.shape));
+def action_values(state, theta):
     # hidden layer values
-    Z = sigma(np.matmul(alpha_matrix(theta), state[:, None]));
-    # TODO ensure Z is a 1d vector
-    print("Z shape (should be 1d): " + str(Z.shape));
+    Z = sigma(np.matmul(alpha_matrix(theta), np.insert(state, 0, 1)[:, None]));
 
     # return action values
-    return np.matmul(beta_matrix(theta), Z[:, None]);
+    return np.matmul(beta_matrix(theta), np.insert(Z, 0, 1)[:, None]);
 
-# TODO action_value_grad()
+def action_value_grad(state, action, theta):
+    beta_grad_mat = np.zeros((num_actions, hidden_layer_size + 1));
+    beta_grad_mat[action, 0] = 1;
+    beta_grad_mat[action, 1:] = sigma(np.matmul(alpha_matrix(theta),\
+        np.insert(state, 0, 1)[:, None]));
+
+    col_multiplier = np.repeat(\
+        np.multiply(beta_matrix(theta)[action, 1:][:, None], \
+        sigma_grad(np.matmul(alpha_matrix(theta), \
+        np.insert(state, 0, 1)[:, None]))\
+        [:, None]),\
+        num_observations + 1, axis=1);
+
+    row_multiplier = np.repeat(\
+        np.insert(state, 0, 1)[None, :],\
+        hidden_layer_size, axis=0);
+
+    alpha_grad_mat = np.multiply(col_multiplier, row_multiplier);
+
+    return ab_matrix_to_theta_full(alpha_grad_mat, beta_grad_mat);
 
 def alpha_matrix(theta):
-    alpha_mat = ab_matrix(theta, 0, num_observations, hidden_layer_size);
+    return ab_matrix(theta, 0, num_observations, hidden_layer_size);
 
 def beta_matrix(theta):
-    beta_mat = ab_matrix(theta, hidden_layer_size * (num_observations + 1),\
+    return ab_matrix(theta, hidden_layer_size * (num_observations + 1),\
         hidden_layer_size, num_actions);
 
 def ab_matrix(theta, offset, in_layer_size, out_layer_size):
-    ab_mat = np.zeros(out_layer_size, in_layer_size + 1);
+    ab_mat = np.zeros((out_layer_size, in_layer_size + 1));
     for i in range(out_layer_size):
         start_ind = offset + i * (in_layer_size + 1);
         end_ind = start_ind + (in_layer_size + 1);
         ab_mat[i, :] = theta[start_ind:end_ind];
     return ab_mat;
 
+def ab_matrix_to_theta_full(alpha, beta):
+    alpha_len = (alpha.shape[0] * alpha.shape[1]);
+    beta_len = (beta.shape[0] * beta.shape[1]);
+    theta = np.zeros((alpha_len + beta_len,));
+    theta[0:alpha_len] = ab_matrix_to_theta(alpha);
+    theta[alpha_len:alpha_len + beta_len] = ab_matrix_to_theta(beta);
+    return theta;
+
+def ab_matrix_to_theta(mat):
+    out_layer_size = mat.shape[0];
+    in_layer_size = mat.shape[1];
+    theta = np.zeros(((out_layer_size * in_layer_size),));
+    for i in range(out_layer_size):
+        start_ind = i * in_layer_size;
+        end_ind = start_ind + in_layer_size;
+        theta[start_ind:end_ind] = mat[i, :];
+
+    return theta;
 
 def sigma(mapped_vals):
-    return 1 / (1 + e ** (-mapped_vals));
-    
+    return (1 / (1 + np.exp(-mapped_vals))).flatten();
+
+def sigma_grad(mapped_vals):
+    return (np.exp(-mapped_vals) / ((1 + np.exp(-mapped_vals)) ** 2)).flatten();
 # -
 
 # Performs a training run using the given learning rate, returning an ordered 
@@ -85,16 +121,16 @@ def DQN_training_run(alpha):
 
     reward = 0;
     done = False;
-    # TODO initialize theta
-    theta = 
-
-    # TODO initialize target theta
+    theta = np.zeros(\
+        ((num_observations + 1) * hidden_layer_size + \
+        (hidden_layer_size + 1) * num_actions, ) \
+        );
     target_theta = theta;
 
     # number of time steps since the last update to the target theta
     target_outdate_count = 0;
 
-    # TODO initialize replay memory
+    # initialize replay memory
     replay_mem = [];
 
     # continue training until cutoff
@@ -141,6 +177,7 @@ def DQN_training_run(alpha):
 
                 theta = theta + alpha * 2 * delta * action_value_grad(\
                     s_orig_state, s_action, theta);
+                print(theta);
                 # -
             
             # - update target theta -
