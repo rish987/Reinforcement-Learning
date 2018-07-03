@@ -3,6 +3,7 @@
 # Created: 29/06/2018
 
 import logging
+import time
 import os
 import numpy as np;
 import matplotlib.pyplot as plt;
@@ -16,6 +17,13 @@ plt.rc('text', usetex=True);
 ALPHA_COLOR_MULT = 0.3;
 # - 
 
+# - tiling parameters -
+# size of tiles
+tile_size = np.array([0.070, 0.45, np.pi / 50, np.pi / 4]) * 2;
+# number of tile indices of each dimension
+tile_ind_counts = np.array([5, 5, 5, 5]);
+# -
+
 # Policy agent with various utility functions for use in emulation/training.
 class Agent(object):
     def __init__(self, action_space):
@@ -28,7 +36,7 @@ class Agent(object):
 
     def act_eps(self, state, theta, epsilon):
         best_action = self.act(state, theta);
-        rand_action = np.random.choice(a = np.array(range(self.num_actions)));
+        rand_action = self.action_space.sample();
 
         action = np.random.choice(a = np.array([best_action, rand_action]), \
             p = [1 - epsilon, epsilon]);
@@ -46,12 +54,19 @@ class Agent(object):
 
     # Gets a vector representation of the given state and action.
     def vector(self, state, action):
-        # set vector to be sets of states, with one set
-        # activated, depending on the action
-        vector = np.zeros((state.size * self.num_actions,));
-        active_start_ind = action * state.size;
-        active_end_ind = active_start_ind + state.size;
-        vector[active_start_ind:active_end_ind] = state;
+        tile = (state / tile_size).astype(int);
+        tile_ind = tile + 2;
+
+        vector_table = np.zeros(np.append(tile_ind_counts,
+            self.num_actions));
+
+        vector_table[tile_ind[0], tile_ind[1], tile_ind[2], tile_ind[3], \
+            action] = 1.0;
+        
+        vector = vector_table.flatten();
+
+        # add bias term
+        vector = np.insert(vector, 0, 1);
 
         return vector;
 
@@ -62,10 +77,9 @@ class Agent(object):
         # directly corresponding to the action
         map_vals = np.array([0.0] * self.num_actions);
 
-        # - set map_vals -
+        # set map_vals
         for action in range(self.num_actions):
             map_vals[action] = self.action_value(state, action, theta);
-        # -
 
         return map_vals;
 
@@ -79,13 +93,13 @@ class Agent(object):
 env = gym.make('CartPole-v0')
 agent = Agent(env.action_space);
 
-MAX_EPISODES = 400;
-RUNS = 10;
+MAX_EPISODES = 800;
+RUNS = 1;
 MAX_STEPS = 200;
 
 # training parameters
 gamma = 1.0;
-epsilon = 0.05;
+epsilon = 0.5;
 alphas = [0.001, 0.01, 0.1];
 # -
 
@@ -97,8 +111,8 @@ def Q_training_run(alpha):
 
     reward = 0;
     done = False;
-    theta = np.zeros((env.observation_space.shape[0] \
-            * env.action_space.n,));
+    theta = np.append(np.zeros(np.append(tile_ind_counts, \
+            env.action_space.n)).flatten(), 0);
 
     # continue training until cutoff
     for ep_i in range(MAX_EPISODES):
@@ -112,18 +126,35 @@ def Q_training_run(alpha):
             orig_state = state;
 
             action = agent.act_eps(state, theta, epsilon);
+            #print(action);
 
             state, reward, done, _ = env.step(action);
 
-            theta += alpha * \
-            (reward + (gamma * agent.select_action(state, theta)[1]) \
-            - agent.action_value(orig_state, action, theta)) \
-            * agent.vector(orig_state, action);
+            if not done:
+                theta += alpha * \
+                    (reward + (gamma * agent.select_action(state, theta)[1]) \
+                    - agent.action_value(orig_state, action, theta)) \
+                    * agent.vector(orig_state, action);
+            else:
+                theta += alpha * \
+                    (reward - agent.action_value(orig_state, action, theta)) \
+                    * agent.vector(orig_state, action);
+
+            inds = np.transpose(np.nonzero(np.reshape(theta[1:], (5, 5, 5, 5,\
+                2))))
+            #print(np.nonzero(np.reshape(theta[1:], (5, 5, 5, 5,\
+            #        2))[:, :, :, :, 1]))
+            ind_vals = np.reshape(theta[1:], (5, 5, 5, 5, 2))\
+                [inds.T.tolist()][:, None]
+            for i in range(inds.shape[0]):
+                pass;
+                #print(str(inds[i]) + '\t' + str(ind_vals[i]));
+            #print();
 
             if done:
                 break;
 
-        alpha = alpha / 1.1;
+        #alpha = alpha / 1.1;
         # -
 
         # - run evaluation episode -
@@ -133,7 +164,7 @@ def Q_training_run(alpha):
 
         for t in range(MAX_STEPS):
             # optional - render episodes
-            #env.render();
+            env.render();
 
             action = agent.act(state, theta);
 
@@ -150,9 +181,7 @@ def Q_training_run(alpha):
         ep_lengths[ep_i] += T;
         # -
 
-
     return ep_lengths;
-
 
 # mapping from alpha to episode length sequence
 alpha_to_ep_lengths = {};
