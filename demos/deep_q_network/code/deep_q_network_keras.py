@@ -1,10 +1,14 @@
-# File: deep_q_network.py 
+# File: deep_q_network_keras.py 
 # Author(s): Rishikesh Vaishnav
-# Created: 29/06/2018
+# Created: 03/07/2018
 import numpy as np;
 import random;
 import matplotlib.pyplot as plt;
 from labellines import labelLine, labelLines;
+
+from keras.models import Sequential
+from keras.layers import Dense
+from keras.optimizers import Adam
 
 import gym
 
@@ -23,92 +27,25 @@ env.seed(0);
 num_observations = env.observation_space.shape[0];
 num_actions = env.action_space.n;
 
-MAX_EPISODES = 200;
+MAX_EPISODES = 1000;
 RUNS = 10;
 MAX_STEPS = 200;
 
 # training parameters
 gamma = 1.0;
 #alphas = [0.001, 0.01, 0.1];
-alphas = [0.001, 0.01, 0.1];
+alphas = [0.0025];#, 0.01, 0.1];
 # TODO? adjust
-C = 20;
+C = 100;
 INIT_EPSILON = 1.0;
 MIN_EPSILON = 0.01;
-EPSILON_DECAY = 0.99;
+EPSILON_DECAY = 0.995;
 replay_count = 30;
 replay_size = 50;
 # -
 
 # - model parameters -
-hidden_layer_size = 3;
-# -
-
-# - model functions -
-def action_values(state, theta):
-    pre_Z = np.matmul(alpha_matrix(theta), np.insert(state, 0, 1)[:, None]);
-    # hidden layer values
-    Z = sigma(pre_Z);
-
-    # return action values
-    return np.matmul(beta_matrix(theta), np.insert(Z, 0, 1)[:, None]), Z, pre_Z;
-
-def action_value_grad(state, action, theta, sigma_vals, map_vals):
-    beta_grad_mat = np.zeros((num_actions, hidden_layer_size + 1));
-    beta_grad_mat[action, 0] = 1;
-    beta_grad_mat[action, 1:] = sigma_vals;
-
-    col_multiplier = np.repeat(\
-        np.multiply(beta_matrix(theta)[action, 1:][:, None], \
-        sigma_grad(map_vals)\
-        [:, None]),\
-        num_observations + 1, axis=1);
-
-    #print("col_multiplier:");
-    #print(col_multiplier);
-    #print();
-
-    row_multiplier = np.repeat(\
-        np.insert(state, 0, 1)[None, :],\
-        hidden_layer_size, axis=0);
-
-    #print("row_multiplier:");
-    #print(row_multiplier);
-    #print();
-
-    alpha_grad_mat = np.multiply(col_multiplier, row_multiplier);
-
-    return ab_matrix_to_theta_full(alpha_grad_mat, beta_grad_mat);
-
-def alpha_matrix(theta):
-    return ab_matrix(theta, 0, num_observations, hidden_layer_size);
-
-def beta_matrix(theta):
-    return ab_matrix(theta, hidden_layer_size * (num_observations + 1),\
-        hidden_layer_size, num_actions);
-
-def ab_matrix(theta, offset, in_layer_size, out_layer_size):
-    ab_mat = np.reshape(theta[offset:offset + out_layer_size *\
-            (in_layer_size + 1)], (out_layer_size, in_layer_size + 1));
-    return ab_mat;
-
-def ab_matrix_to_theta_full(alpha, beta):
-    return np.concatenate((alpha.flatten(), beta.flatten()));
-
-def sigma(mapped_vals):
-    return (1 / (1 + np.exp(-mapped_vals))).flatten();
-
-def sigma_grad(mapped_vals):
-    return (np.exp(-mapped_vals) / ((1 + np.exp(-mapped_vals)) ** 2)).flatten();
-
-#def sigma(mapped_vals):
-#    #print(mapped_vals);
-#    #print(mapped_vals * (mapped_vals > 0));
-#    #print();
-#    return (mapped_vals * (mapped_vals > 0)).flatten();
-#
-#def sigma_grad(mapped_vals):
-#    return ((mapped_vals > 0) * 1.0).flatten();
+hidden_layer_size = 20;
 # -
 
 # Performs a training run using the given learning rate, returning an ordered 
@@ -119,9 +56,9 @@ def DQN_training_run(alpha):
 
     reward = 0;
     done = False;
-    theta = np.random.rand(\
-        (num_observations + 1) * hidden_layer_size + \
-        (hidden_layer_size + 1) * num_actions\
+    theta = np.zeros(\
+        ((num_observations + 1) * hidden_layer_size + \
+        (hidden_layer_size + 1) * num_actions, ) \
         );
     target_theta = theta;
 
@@ -135,7 +72,7 @@ def DQN_training_run(alpha):
 
     # continue training until cutoff
     for ep_i in range(MAX_EPISODES):
-        print("\tepisode " + str(ep_i + 1) + "/" + str(MAX_EPISODES));
+        print("\t\tepisode " + str(ep_i + 1) + "/" + str(MAX_EPISODES));
 
         # - run training episode -
         state = env.reset()
