@@ -16,12 +16,20 @@
 \maketitle
 \section*{Basic Implementation}
 \subsection*{Code}
+Manual Implementation
 \begin{itemize}
     \item The code for this project is available at: 
     % TODO
-\url{https://github.com/rish987/Reinforcement-Learning/blob/master/demos/deep_q_network/code/deep_q_network.py}.
+    \url{https://github.com/rish987/Reinforcement-Learning/blob/master/demos/deep_q_network/code/deep_q_network.py}.
+\end{itemize}
+Keras Implementation
+\begin{itemize}
+    \item The code for this project is available at: 
+    % TODO
+    \url{}.
 \end{itemize}
 \subsection*{Implementation Details}
+Manual Implementation
 \begin{itemize}
     \item Unlike the Atari gameplay environment described by Mnih et. al., the
         pole-cart environment is not perceptually aliased. That is, the current
@@ -35,10 +43,15 @@
     \item Because the observation space of the pole-cart environment is small
         and not spatially correlated, it is not helpful to use a convolutional
         neural network.
+\end{itemize}
+Manual Implementation
+\begin{itemize}
     \item The model is a simple vanilla neural network with one hidden layer:
     \begin{itemize}
         \item Let $M$ be the number of nodes in the hidden layer.
         \item Let $K$ be the number of output nodes (i.e., number of actions).
+        \item Let $\sigma(x)$ be the sigmoid activation function
+            $\frac{1}{1 + e^{-x}}$.
         \item The hidden layer is calculated as:
         \begin{align*}
             Z_{m} &= \sigma(\alpha^{T}_{0m} + \alpha^{T}_{m}x(s)), m = 1, \dots, M
@@ -49,7 +62,6 @@
         \end{align*}
     \end{itemize}
     \item Solving for the gradient of the sample error:
-        % TODO bias terms?
     \begin{align*}
         \nabla_{\theta}J_t(\theta) &= -2(y_t - \hat{q}(s_t, a_t, \theta))
         \nabla_{\theta}\hat{q}(s_t, a_t, \theta)\\
@@ -71,14 +83,36 @@
     \end{align*}
     \item A decaying $\epsilon$ was used, which started at $1.0$ and decayed to
         a minimum value of $0.01$.
+    \item A constant decay rate was used for the learning rate $\alpha$.
 \end{itemize}
 \subsection*{Results}
 \begin{centering}
+    \scalebox{0.6}{\input{DQN_manual.pgf}} \\
 \end{centering}
 \begin{itemize}
-    \item The results indicate that the agent did learn something, as it
-        generally improved as more episodes were experienced, but it was unable
-        to find an optimal strategy. This may be due to the model being of
-        insufficient size.
+    \item The results for different $\alpha$ can be summarized as follows:
+    \begin{itemize}
+        \item The largest $\alpha$ learned initially, but worsened and
+            failed to find a policy that was capable of passing the episode at
+            all. This suggests that, in starting with a larger $\alpha$, it
+            could be useful to decay by a larger factor.
+        \item The middle $\alpha$ learned very well initially, but 
+            worsened and failed to find a policy that was capable of
+            consistently passing the episode.  This also suggests that, in
+            starting with a larger $\alpha$, it could be useful to decay by a
+            larger factor.
+        \item The small $\alpha$ learned slowly, but eventually leveled off at
+            a better policy than those of the other $\alpha$s. This may mean
+            that the decay rate was too large relative to this $\alpha$, causing
+            it to cease improving after $\alpha$ became negligibly small.
+    \end{itemize}
+    \item These results suggest that this learner is feasable, and in order to
+        improve this learner, it is necessary to more carefully control how
+        $\alpha$ decays over time. It may also be useful to increase the number
+        of hidden layers in the model. 
+    \item To verify that this was the case,
+        I move on to replacing my manual implementation with a Keras 
+        implementation that handles training on its own and with which I can
+        easily change the ANN parameters.
 \end{itemize}
 \end{document}
