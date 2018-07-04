@@ -89,6 +89,12 @@ def sigma(mapped_vals):
 
 def sigma_grad(mapped_vals):
     return (np.exp(-mapped_vals) / ((1 + np.exp(-mapped_vals)) ** 2)).flatten();
+
+#def sigma(mapped_vals):
+#    return (mapped_vals * (mapped_vals > 0)).flatten();
+#
+#def sigma_grad(mapped_vals):
+#    return ((mapped_vals > 0) * 1.0).flatten();
 # -
 
 # Performs a training run using the given learning rate, returning an ordered 
