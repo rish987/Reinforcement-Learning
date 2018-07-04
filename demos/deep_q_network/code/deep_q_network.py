@@ -8,6 +8,9 @@ from labellines import labelLine, labelLines;
 
 import gym
 
+np.random.seed(0);
+random.seed(0);
+
 # - graph parameters -
 plt.rc('text', usetex=True);
 
@@ -16,51 +19,45 @@ ALPHA_COLOR_MULT = 0.3;
 
 # - initialize training -
 env = gym.make('CartPole-v0')
+env.seed(0);
 num_observations = env.observation_space.shape[0];
 num_actions = env.action_space.n;
 
-MAX_EPISODES = 10000;
+MAX_EPISODES = 2000;
 RUNS = 1;
 MAX_STEPS = 200;
 
 # training parameters
 gamma = 1.0;
-alphas = [0.001, 0.01, 0.1];
-alphas = [0.001]#, 0.01, 0.1];
+#alphas = [0.001, 0.01, 0.1];
+alphas = [0.0025];#, 0.01, 0.1];
 # TODO? adjust
-epsilon = 0.1;
-C = 5;
-replay_count = 3;
+C = 100;
+replay_count = 30;
+replay_size = 50;
 # -
 
 # - model parameters -
-hidden_layer_size = 8;
+hidden_layer_size = 20;
 # -
 
 # - model functions -
-def action_value(state, action, theta):
-    T = action_values(state, theta);
-
-    # TODO optimize for not calculating all T;
-    return T[action];
-
 def action_values(state, theta):
+    pre_Z = np.matmul(alpha_matrix(theta), np.insert(state, 0, 1)[:, None]);
     # hidden layer values
-    Z = sigma(np.matmul(alpha_matrix(theta), np.insert(state, 0, 1)[:, None]));
+    Z = sigma(pre_Z);
 
     # return action values
-    return np.matmul(beta_matrix(theta), np.insert(Z, 0, 1)[:, None]);
+    return np.matmul(beta_matrix(theta), np.insert(Z, 0, 1)[:, None]), Z, pre_Z;
 
-def action_value_grad(state, action, theta):
+def action_value_grad(state, action, theta, sigma_vals, map_vals):
     beta_grad_mat = np.zeros((num_actions, hidden_layer_size + 1));
     beta_grad_mat[action, 0] = 1;
-    beta_grad_mat[action, 1:] = sigma(np.matmul(alpha_matrix(theta),\
-        np.insert(state, 0, 1)[:, None]));
+    beta_grad_mat[action, 1:] = sigma_vals;
 
     col_multiplier = np.repeat(\
         np.multiply(beta_matrix(theta)[action, 1:][:, None], \
-        sigma_grad(np.matmul(alpha_matrix(theta), \
-        np.insert(state, 0, 1)[:, None]))\
+        sigma_grad(map_vals)\
         [:, None]),\
         num_observations + 1, axis=1);
 
@@ -80,31 +77,12 @@ def beta_matrix(theta):
         hidden_layer_size, num_actions);
 
 def ab_matrix(theta, offset, in_layer_size, out_layer_size):
-    ab_mat = np.zeros((out_layer_size, in_layer_size + 1));
-    for i in range(out_layer_size):
-        start_ind = offset + i * (in_layer_size + 1);
-        end_ind = start_ind + (in_layer_size + 1);
-        ab_mat[i, :] = theta[start_ind:end_ind];
+    ab_mat = np.reshape(theta[offset:offset + out_layer_size *\
+            (in_layer_size + 1)], (out_layer_size, in_layer_size + 1));
     return ab_mat;
 
 def ab_matrix_to_theta_full(alpha, beta):
-    alpha_len = (alpha.shape[0] * alpha.shape[1]);
-    beta_len = (beta.shape[0] * beta.shape[1]);
-    theta = np.zeros((alpha_len + beta_len,));
-    theta[0:alpha_len] = ab_matrix_to_theta(alpha);
-    theta[alpha_len:alpha_len + beta_len] = ab_matrix_to_theta(beta);
-    return theta;
-
-def ab_matrix_to_theta(mat):
-    out_layer_size = mat.shape[0];
-    in_layer_size = mat.shape[1];
-    theta = np.zeros(((out_layer_size * in_layer_size),));
-    for i in range(out_layer_size):
-        start_ind = i * in_layer_size;
-        end_ind = start_ind + in_layer_size;
-        theta[start_ind:end_ind] = mat[i, :];
-
-    return theta;
+    return np.concatenate((alpha.flatten(), beta.flatten()));
 
 def sigma(mapped_vals):
     return (1 / (1 + np.exp(-mapped_vals))).flatten();
@@ -127,6 +105,8 @@ def DQN_training_run(alpha):
         );
     target_theta = theta;
 
+    epsilon = 0.5;
+
     # number of time steps since the last update to the target theta
     target_outdate_count = 0;
 
@@ -135,12 +115,14 @@ def DQN_training_run(alpha):
 
     # continue training until cutoff
     for ep_i in range(MAX_EPISODES):
+        print("\t\tepisode " + str(ep_i + 1) + "/" + str(MAX_EPISODES));
+
         # - run training episode -
         state = env.reset()
 
         for _ in range(MAX_STEPS):
             # optional - render episodes
-            env.render();
+            #env.render();
 
             # save original state
             orig_state = state;
@@ -151,7 +133,7 @@ def DQN_training_run(alpha):
                 action = env.action_space.sample();
             # do best action
             else:
-                action = np.argmax(action_values(state, theta));
+                action = np.argmax(action_values(state, theta)[0]);
             # -
 
             # perform action and record results
@@ -160,6 +142,9 @@ def DQN_training_run(alpha):
             # add transition to replay memory
             replay_mem.append((orig_state, action, reward, state, done));
 
+            if len(replay_mem) > replay_size:
+                del replay_mem[0];
+
             for _ in range(replay_count):
                 # get random sample
                 s_orig_state, s_action, s_reward, s_state, s_done = \
@@ -167,17 +152,20 @@ def DQN_training_run(alpha):
 
                 # get target
                 if not s_done:
-                    action_val = np.max(action_values(s_state, target_theta));
+                    action_val = np.max(action_values(s_state,\
+                        target_theta)[0]);
                     target = s_reward + (gamma * action_val);
                 else:
                     target = s_reward;
 
                 # - update theta -
-                delta = target - action_value(s_orig_state, s_action, theta);
+                action_vals, sigma_vals, map_vals =\
+                    action_values(s_orig_state, theta);
+                delta = target - action_vals[s_action];
 
                 theta = theta + alpha * 2 * delta * action_value_grad(\
-                    s_orig_state, s_action, theta);
-                print(theta);
+                    s_orig_state, s_action, theta, sigma_vals, map_vals);
+                #print(theta);
                 # -
             
             # - update target theta -
@@ -186,9 +174,37 @@ def DQN_training_run(alpha):
                 target_theta = theta;
                 target_outdate_count = 0;
             # -
+
+            #epsilon -= epsilon * 0.0001;
+            alpha /= 1.0001;
             
             if done:
                 break;
+        # -
+        print(alpha);
+
+        # - run evaluation episode -
+        state = env.reset()
+
+        t = 0;
+
+        for t in range(MAX_STEPS):
+            # optional - render episodes
+            #env.render();
+
+            action = np.argmax(action_values(state, theta)[0]);
+
+            state, _, done, _ = env.step(action);
+
+            if done:
+                break;
+
+        # total time of episode
+        T = t + 1;
+
+        print("\tEpisode Length: " + str(T));
+
+        ep_lengths[ep_i] += T;
         # -
 
     return ep_lengths;
