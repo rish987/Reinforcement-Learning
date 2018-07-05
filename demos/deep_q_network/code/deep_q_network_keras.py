@@ -4,7 +4,6 @@
 import numpy as np;
 import random;
 import matplotlib.pyplot as plt;
-from collections import deque
 from labellines import labelLine, labelLines;
 
 from keras.models import Sequential
@@ -28,20 +27,20 @@ env.seed(0);
 num_observations = env.observation_space.shape[0];
 num_actions = env.action_space.n;
 
-MAX_EPISODES = 150;
-RUNS = 5;
-MAX_STEPS = 500;
+MAX_EPISODES = 100;
+RUNS = 1;
+MAX_STEPS = 200;
 
 # training parameters
-gamma = 0.95;
-#alphas = [0.001, 0.01, 0.1];
-alphas = [0.001];#, 0.01, 0.1];
+gamma = 1.0;
+alphas = [0.001, 0.01, 0.1];
 # TODO? adjust
-C = 1;
+C = 3;
 INIT_EPSILON = 1.0;
 MIN_EPSILON = 0.01;
 EPSILON_DECAY = 0.995;
-replay_count = 32;
+replay_count = 30;
+replay_size = 50;
 # -
 
 # - model parameters -
@@ -77,14 +76,14 @@ def DQN_training_run(alpha):
     target_outdate_count = 0;
 
     # initialize replay memory
-    replay_mem = deque(maxlen=2000)
+    replay_mem = [];
 
     # continue training until cutoff
     for ep_i in range(MAX_EPISODES):
+        print("\t\tepisode " + str(ep_i + 1) + "/" + str(MAX_EPISODES));
+
         # - run training episode -
         state = env.reset();
-
-        t = 0;
 
         for t in range(MAX_STEPS):
             # optional - render episodes
@@ -95,8 +94,8 @@ def DQN_training_run(alpha):
             
             # - determine action -
             # do random action to ensure exploration
-            if np.random.rand() <= epsilon:
-                action = random.randrange(num_actions);
+            if np.random.rand() < epsilon:
+                action = env.action_space.sample();
             # do best action
             else:
                 action = np.argmax(model.predict(state[None, :])[0]);
@@ -104,39 +103,33 @@ def DQN_training_run(alpha):
 
             # perform action and record results
             state, reward, done, _ = env.step(action);
-            reward = reward if not done else -10;
+            reward = -10 if (done and t < 199) else reward;
 
             # add transition to replay memory
             replay_mem.append((orig_state, action, reward, \
                 state, done));
 
-            # TODO remove
-            if done:
-                print("episode: {}/{}, score: {}, e: {:.2}"
-                      .format(ep_i + 1, MAX_EPISODES, t, epsilon))
-                break
-            
-            if len(replay_mem) > replay_count:
-                minibatch = random.sample(replay_mem, replay_count);
-                for s_orig_state, s_action, s_reward, s_state, s_done in \
-                    minibatch:
-                    # get target
-                    if not s_done:
-                        # TODO change back to target_model
-                        action_val = np.amax(model.predict(\
-                            s_state[None, :])[0]);
-                        target = s_reward + (gamma * action_val);
-                    else:
-                        target = s_reward;
+            if len(replay_mem) > replay_size:
+                del replay_mem[0];
 
-                    # - update model -
-                    target_f = model.predict(s_orig_state[None, :])
-                    target_f[0][s_action] = target
-                    model.fit(s_orig_state[None, :], target_f, epochs=1, verbose=0)
-                    # -
+            for _ in range(replay_count):
+                # get random sample
+                s_orig_state, s_action, s_reward, s_state, s_done = \
+                    random.choice(replay_mem);
 
-                if epsilon > MIN_EPSILON:
-                    epsilon = epsilon * EPSILON_DECAY;
+                # get target
+                if not s_done:
+                    action_val = np.amax(target_model.predict(s_state[None, :]\
+                        )[0]);
+                    target = s_reward + (gamma * action_val);
+                else:
+                    target = s_reward;
+
+                # - update model -
+                target_f = model.predict(s_orig_state[None, :])
+                target_f[0][s_action] = target
+                model.fit(s_orig_state[None, :], target_f, epochs=1, verbose=0)
+                # -
             
             # - update target model -
             target_outdate_count += 1;
@@ -145,32 +138,36 @@ def DQN_training_run(alpha):
                 target_outdate_count = 0;
             # -
 
+            alpha /= 1.0001;
+            
             if done:
                 break;
         # -
+        if epsilon > MIN_EPSILON:
+            epsilon = epsilon * EPSILON_DECAY;
 
         # - run evaluation episode -
-        #state = env.reset();
+        state = env.reset();
 
-        #t = 0;
+        t = 0;
 
-        #for t in range(MAX_STEPS):
-        #    # optional - render episodes
-        #    #env.render();
+        for t in range(MAX_STEPS):
+            # optional - render episodes
+            #env.render();
 
-        #    action = np.argmax(model.predict(state[None, :])[0]);
+            action = np.argmax(model.predict(state[None, :])[0]);
 
-        #    state, _, done, _ = env.step(action);
+            state, _, done, _ = env.step(action);
 
-        #    if done:
-        #        break;
+            if done:
+                break;
 
-        ## total time of episode
-        #T = t + 1;
+        # total time of episode
+        T = t + 1;
 
-        #print("\tEpisode Length: " + str(T));
+        print("\tEpisode Length: " + str(T));
 
-        #ep_lengths[ep_i] += T;
+        ep_lengths[ep_i] += T;
         # -
 
     return ep_lengths;
@@ -180,10 +177,14 @@ alpha_to_ep_lengths = {};
 
 # - collect results -
 for alpha in alphas:
+    print("Alpha: " + str(alpha));
+
     # sequence of episode lengths, totaled over all runs
     ep_lengths_tot = np.zeros((MAX_EPISODES,));
 
     for run_i in range(RUNS):
+        print("\trun: " + str(run_i + 1) + "/" + str(RUNS));
+
         ep_lengths_tot = ep_lengths_tot + DQN_training_run(alpha);
 
     alpha_to_ep_lengths[alpha] = ep_lengths_tot / RUNS;
@@ -208,7 +209,7 @@ plt.title("Q Learning Function Approximator Results");
 
 labelLines(plt.gca().get_lines(),zorder=2.5)
 
-plt.savefig("DQN_manual.pgf");
+plt.savefig("DQN_Keras.pgf");
 
 plt.show();
 # -

@@ -83,11 +83,21 @@ Manual Implementation
     \item A decaying $\epsilon$ was used, which started at $1.0$ and decayed to
         a minimum value of $0.01$.
     \item A constant decay rate was used for the learning rate $\alpha$.
+Keras Implementation
+\begin{itemize}
+    \item The size of the model seemed to significantly affect the performance
+        of the Keras ANN. I found that a model that yielded good (though
+        perhaps not optimal results) contained two hidden layers of 24 nodes
+        each, with ReLU activation functions.
+    \item Other than replacing the model and outsourcing gradient calculation,
+        the general algorithmic framework remained the same.
+\end{itemize}
 \end{itemize}
 \subsection*{Results}
 \begin{centering}
     \scalebox{0.6}{\input{DQN_manual.pgf}} \\
 \end{centering}
+Manual Implementation
 \begin{itemize}
     \item The results for different $\alpha$ can be summarized as follows:
     \begin{itemize}
@@ -113,5 +123,20 @@ Manual Implementation
         I move on to replacing my manual implementation with a Keras 
         implementation that handles training on its own and with which I can
         easily change the ANN parameters.
+\end{itemize}
+Keras Implementation
+\begin{itemize}
+    \item The results for different $\alpha$ can be summarized as follows:
+    \begin{itemize}
+        \item The largest $\alpha$
+        \item The middle $\alpha$ 
+        \item The small $\alpha$ 
+    \end{itemize}
+    \item This clearly outperforms my manual implementation, but when I
+        reduced the model to approximately the size of my manually constructed
+        model, it performed similarly. This suggests that the size of the
+        neural network and intelligent control of the learning rate that
+        significantly affect the performance of an algorithm that makes use of
+        an ANN.
 \end{itemize}
 \end{document}

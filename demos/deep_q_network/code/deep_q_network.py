@@ -158,7 +158,7 @@ def DQN_training_run(alpha):
 
             # perform action and record results
             state, reward, done, _ = env.step(action);
-            reward = -10 if done and t < 199 else reward;
+            reward = -10 if (done and t < 199) else reward;
 
             # add transition to replay memory
             replay_mem.append((orig_state, action, reward, state, done));
