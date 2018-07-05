@@ -26,7 +26,7 @@ Keras Implementation
 \begin{itemize}
     \item The code for this project is available at: 
     % TODO
-    \url{}.
+    \url{https://github.com/rish987/Reinforcement-Learning/blob/master/demos/deep_q_network/code/deep_q_network_keras.py}.
 \end{itemize}
 \subsection*{Implementation Details}
 \begin{itemize}
@@ -87,17 +87,18 @@ Keras Implementation
 \begin{itemize}
     \item The size of the model seemed to significantly affect the performance
         of the Keras ANN. I found that a model that yielded good (though
-        perhaps not optimal results) contained two hidden layers of 24 nodes
+        perhaps not optimal) results contained two hidden layers of 24 nodes
         each, with ReLU activation functions.
     \item Other than replacing the model and outsourcing gradient calculation,
         the general algorithmic framework remained the same.
 \end{itemize}
 \end{itemize}
 \subsection*{Results}
+Manual Implementation
+
 \begin{centering}
     \scalebox{0.6}{\input{DQN_manual.pgf}} \\
 \end{centering}
-Manual Implementation
 \begin{itemize}
     \item The results for different $\alpha$ can be summarized as follows:
     \begin{itemize}
@@ -125,18 +126,28 @@ Manual Implementation
         easily change the ANN parameters.
 \end{itemize}
 Keras Implementation
+
+\begin{centering}
+    \scalebox{0.6}{\input{DQN_Keras.pgf}} \\
+\end{centering}
+Note: Because Keras took significantly longer to run, I didn't collect enough
+data to average, which explains the noise. However, I observed that the
+smallest learning rate ($\alpha = 0.001$) consistently scored $> 150$ on
+subsequent runs.
 \begin{itemize}
     \item The results for different $\alpha$ can be summarized as follows:
     \begin{itemize}
-        \item The largest $\alpha$
-        \item The middle $\alpha$ 
-        \item The small $\alpha$ 
+        \item The largest $\alpha$ performed poorly initially, but learned a
+            policy that generally performed worse than the other two $\alpha$s.
+        \item The middle $\alpha$ Learned quickly, and performed averagely
+            compared to the other two $\alpha$s.
+        \item The smallest $\alpha$ learned quickly, and performed relatively
+            well, converging to an almost optimal policy.
     \end{itemize}
     \item This clearly outperforms my manual implementation, but when I
         reduced the model to approximately the size of my manually constructed
         model, it performed similarly. This suggests that the size of the
-        neural network and intelligent control of the learning rate that
-        significantly affect the performance of an algorithm that makes use of
-        an ANN.
+        neural network and intelligent control of the learning rate can
+        significantly affect the performance of the algorithm.
 \end{itemize}
 \end{document}
