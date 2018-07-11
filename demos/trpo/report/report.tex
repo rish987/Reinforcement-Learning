@@ -1,0 +1,118 @@
+\documentclass[a4paper]{article}
+\setlength\parindent{0pt}
+
+\usepackage{pgfplots}
+\usepackage{amsthm, amsmath, amssymb, verbatim, enumerate, mathtools, algorithm}
+\usepackage{pgf}
+\usepackage{hyperref}
+\def\labelitemi{--}
+\def\labelitemii{--}
+\def\labelitemiii{--}
+\def\labelitemiv{--}
+\pgfplotsset{compat=newest}
+
+\pagestyle{empty}
+
+\title{Trust Region Policy Optimization Demo}
+\author{Rishikesh Vaishnav}
+\begin{document}
+\maketitle
+\subsection*{Code}
+\begin{itemize}
+    \item The code for this project is available at: 
+    % TODO
+    \url{}.
+\end{itemize}
+\subsection*{Implementation Details}
+Single Path Executable Pseudocode:
+\begin{itemize}
+    \item Initialize policy parameter $\theta$.
+    \item Iterate until convergence:
+    \begin{itemize}
+        \item Initialize/clear list $S$ of $\{\frac{G_{\theta}(s, a)}
+            {\pi_{\theta}(s, a)}, s, a\}$.
+        \item Generate $N_{\tau}$ trajectories $\{\tau\}$.
+        \item For each trajectory $\tau \in \{\tau\}$:
+        \begin{itemize}
+            \item For each $\{s, a\} \in \tau$:
+            \begin{itemize}
+                \item Calculate discounted return $G_{\theta}(s, a)$ from this
+                    time to end of episode.
+                \item Calculate $\pi_{\theta}(s, a)$ at this $(s, a)$.
+                \item Store $\{\frac{G_{\theta}(s, a)} 
+                    {\pi_{\theta}(s, a)}, s, a\}$ in $S$.
+            \end{itemize}
+        \end{itemize}
+        \item Use constraint optimizer to yield
+            $\theta'$ by solving the problem:
+        \begin{itemize}
+            \item Objective (to maximize): objective($S$, $\theta$).
+            \item Constraint: constraint($S$, $\theta$).
+        \end{itemize}
+        \item $\theta = \theta'$.
+    \end{itemize}
+\end{itemize}
+objective($S$, $\theta'$) Pseudocode:
+\begin{itemize}
+    \item Initialize $L = 0$.
+    \item For $\{\frac{G_{\theta}(s, a)}
+            {\pi_{\theta}(s, a)}, s, a\} \in S$:
+    \begin{itemize}
+        \item Add $\pi_{\theta'}(s, a) 
+            \frac{G_{\theta}(s, a)} {\pi_{\theta}(s, a)}$ to $L$.
+    \end{itemize}
+    \item Return $L$.
+\end{itemize}
+constraint($S$, $\theta'$) Pseudocode:
+\begin{itemize}
+    \item Initialize $D = 0$.
+    \item For $s \in S$:
+    \begin{itemize}
+        \item Add $D_{KL}(\pi_{\theta}(\cdot | s) 
+            || \pi_{\theta'}(\cdot | s))$ to $D$.
+    \end{itemize}
+    \item Return $\frac{D}{|S|}$.
+\end{itemize}
+Parameter Settings:
+\begin{itemize}
+    \item $N_{\tau} = 4$ (adjusted to balance between empirical runtime and
+        performance) % TODO
+    \item $\gamma = 1$ (adjusted to maximize empirical performance)% TODO
+    \item $\delta = 0.01$ (following Schulman et. al.)% TODO
+\end{itemize}
+Policy Function Encoding:
+\begin{itemize}
+    \item Each state-action pair is converted to the feature vector $x(s, a)$.
+        Letting $S_{obs}$ and $S_{act}$ be the size of the observation and
+        action spaces, respectively, the size of the vector is $S_{obs} \times
+        S_{act}$, where all features are $0$ except for the $S_{obs}$ features
+        starting at index $S_{obs} \times a$, which are set to the
+        environment's parameterization of $s$.
+    \begin{itemize}
+        \item In this case, $S_{obs} = 4$ and $S_{act} = 2$.
+    \end{itemize}
+    \item The policy function $\pi(a | s, \theta)$ performs the softmax on a
+        parameterized linear mapping of feature vectors:
+        \begin{align*}
+            \pi(a | s, \theta) &= \frac{e^{\theta^T x(s, a)}}
+            {\sum_{b} e^{\theta^T x(s, b)}}\\
+        \end{align*}
+\end{itemize}
+Constraint Optimization Method:
+\begin{itemize}
+    \item I used scipy's optimize.minimize function, with the ``trust-constr''
+        method. All gradients and hessians were automatically calculated. A
+        tolerance of $1 \times 10^{-2}$ was used.
+\end{itemize}
+\subsection*{Results}
+\begin{centering}
+    % TODO
+\end{centering}
+\begin{itemize}
+    \item The results can be summarized as follows:
+    \begin{itemize}
+        % TODO
+        \item 
+    \end{itemize}
+\end{itemize}
+\end{document}
