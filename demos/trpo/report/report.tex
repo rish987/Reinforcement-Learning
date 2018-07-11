@@ -102,11 +102,12 @@ Constraint Optimization Method:
 \begin{itemize}
     \item I used scipy's optimize.minimize function, with the ``trust-constr''
         method. All gradients and hessians were automatically calculated. A
-        tolerance of $1 \times 10^{-2}$ was used.
+        tolerance of $1 \times 10^{-2}$ and a maximum iteration limit of
+        $100$ were used.
 \end{itemize}
 \subsection*{Results}
 \begin{centering}
-    % TODO
+    \scalebox{0.6}{\input{TRPO_agent.pgf}} \\
 \end{centering}
 \begin{itemize}
     \item The results can be summarized as follows:

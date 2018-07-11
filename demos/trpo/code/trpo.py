@@ -5,13 +5,19 @@
 import numpy as np;
 import gym;
 import random;
+from decimal import Decimal;
+from scipy.stats import entropy;
 from scipy.optimize import minimize;
 from scipy.optimize import BFGS;
 from scipy.optimize import SR1;
 from scipy.optimize import NonlinearConstraint;
+import matplotlib.pyplot as plt;
+import pickle;
 
-np.random.seed(0);
-random.seed(0);
+RAND_SEED = 0;
+
+np.random.seed(RAND_SEED);
+random.seed(RAND_SEED);
 
 # Policy agent with various utility functions for use in emulation/training.
 class Agent(object):
@@ -43,7 +49,8 @@ class Agent(object):
     def action_probs(self, state, theta):
         # to store list of linearly mapped values for each action, with indices
         # directly corresponding to the action
-        map_vals = np.array([0.0] * self.num_actions);
+        map_vals = np.array([Decimal(0.0)] * self.num_actions, \
+                dtype=np.dtype(Decimal));
 
         # - set map_vals -
         for action in range(self.num_actions):
@@ -51,60 +58,68 @@ class Agent(object):
             # activated, depending on the action
             vector = self.vector(state, action);
 
-            map_vals[action] = np.dot(vector, theta);
+            map_vals[action] = Decimal(np.dot(vector.astype(np.dtype(Decimal)), \
+                theta.astype(np.dtype(Decimal))));
         # -
+
 
         # exponentiate the map vals
         map_vals_exp = np.exp(map_vals);
 
         # get softmax action probabilities
-        action_probs = (map_vals_exp) / np.sum(map_vals_exp);
+        action_probs = ((map_vals_exp) / np.sum(map_vals_exp)).astype(float);
 
         return map_vals_exp, action_probs;
 
 # - initialize training -
 env = gym.make('CartPole-v0')
-env.seed(0);
+env.seed(RAND_SEED);
 agent = Agent(env.action_space)
 
-NUM_ITER = 100;
-RUNS = 10;
+NUM_ITER = 15;
+RUNS = 5;
 MAX_STEPS = 200;
 
 # training parameters
 gamma = 1.0;
-NUM_TRAJ = 4;
+NUM_TRAJ = 5;
 delta = 0.01;
+MAX_ITERS = 500;
 
 # number of episodes in a single run
 MAX_EPISODES = NUM_ITER * NUM_TRAJ;
 # -
 
 # Calculate KL Divergence of two policies under a certain state.
-def kl_divergence(theta1, theta2, state):
-    action_probs1 = agent.action_probs(state, theta1)[1];
+def kl_divergence(action_probs_old, theta2, state):
+    action_probs1 = action_probs_old[tuple(state.tolist())];
     action_probs2 = agent.action_probs(state, theta2)[1];
 
-    D = 0;
+    D = entropy(action_probs1, action_probs2);
+#    D = 0;
+#
+#    for action in range(env.action_space.n):
+#        prob1 = action_probs1[action];
+#        prob2 = action_probs2[action];
+#	
+#        if prob2 > 1.0e-12:
+#            D +=  prob1 * np.log(prob1 / prob2);
 
-    for action in range(env.action_space.n):
-        prob1 = action_probs1[action];
-        prob2 = action_probs2[action];
-	
-        if prob2 != 0:
-            D +=  prob1 * np.log(prob1 / prob2);
-
-    if D < -1.0e-5:
-        print("WARNING: negative KL-divergence.");
-        print(D);
+    if D < 0:
+        if D < -1.0e-5:
+            print("WARNING: negative KL-divergence.");
+            print(action_probs1[0] + action_probs1[1]);
+            print(action_probs2[0] + action_probs2[1]);
+            print(D);
+        return 0;
 
     return D;
 
 # Calculate value of constraint function.
-def constraint(S, theta, theta_old):
+def constraint(S, theta, action_probs_old):
     D = 0;
     for _, state, _ in S:
-        D += kl_divergence(theta_old, theta, state);
+        D += kl_divergence(action_probs_old, theta, state);
 
     return D / len(S);
 
@@ -117,7 +132,7 @@ def objective(S, theta):
     return L;
 
 def checker(a, b):
-    print("Here: " + str(a));
+    print("\t\tParameters: \n\t\t" + str(a[0:4]) + "\n\t\t" + str(a[4:]));
 
 # Performs a training run, returning an ordered 
 # list of episode lengths.
@@ -171,7 +186,9 @@ def TRPO_training_run():
             # total time of episode
             T = t + 1;
 
-            ep_lengths[traj_i] += T;
+            ep_lengths[traj_i + (iter_i * NUM_TRAJ)] += T;
+
+            print('\t\tepisode length: ' + str(T));
 
             # -
 
@@ -189,24 +206,50 @@ def TRPO_training_run():
             # -
 
         # - update parameters -
-        constraint_var = NonlinearConstraint(lambda x:constraint(S, x, theta),\
-            -np.inf, delta, jac='2-point', hess=BFGS());
-        theta = minimize(lambda x:(-1 * objective(S, x)), theta, \
-            method='trust-constr',  jac="2-point",\
-            hess=SR1(), constraints=[constraint_var],\
-            options={'verbose': 1},\
-            tol=1.0e-2,\
-            callback=checker).x;
+        # this is not the last iteration, so updated parameters would be useful
+        if iter_i < (NUM_ITER - 1):
+            action_probs_old = {};
+            for _, state, _ in S:
+                action_probs_old[tuple(state.tolist())] = \
+                    agent.action_probs(state, theta)[1];
+            constraint_var = NonlinearConstraint(lambda x:constraint(S, x,\
+                action_probs_old), -np.inf, delta, jac='2-point', hess=BFGS());
+            theta = minimize(lambda x:(-1 * objective(S, x)), theta, \
+                method='trust-constr',  jac="2-point",\
+                hess=SR1(), constraints=[constraint_var],\
+                options={'verbose': 1, 'maxiter': MAX_ITERS},\
+                tol=1.0e-2,\
+                callback=checker).x;
         # -
 
     return ep_lengths;
 
+# - perform runs -
 # sequence of episode lengths, totaled over all RUNS
-ep_lengths_tot = np.zeros((MAX_EPISODES,));
+ep_lengths = np.zeros((RUNS, MAX_EPISODES));
 
 for run_i in range(RUNS):
     print("run: " + str(run_i + 1) + "/" + str(RUNS));
 
-    ep_lengths_tot = ep_lengths_tot + TRPO_training_run();
+    ep_lengths[run_i, :] = TRPO_training_run();
 
-alpha_to_ep_lengths[alpha] = ep_lengths_tot / RUNS;
+with open("single_path_ep_lengths.dat", 'wb') as file:
+    pickle.dump(ep_lengths, file);
+
+ep_lengths_avg = np.sum(ep_lengths, axis=0).astype(float) / RUNS;
+# - 
+
+# - plot results -
+x = np.array(range(1, len(ep_lengths_avg) + 1)).astype(float);
+y = ep_lengths_avg;
+color = (0.0, 0.0, 0.0);
+plt.plot(x, y, linestyle='-', color=color);
+
+plt.ylabel("Average Episode Length (" + str(RUNS) + " Runs)");
+plt.xlabel("Episode");
+plt.title("Trust Region Policy Optimization Results");
+
+plt.savefig("TRPO_agent.pgf");
+
+plt.show();
+# -
