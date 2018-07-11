@@ -75,7 +75,7 @@ constraint($S$, $\theta'$) Pseudocode:
 \end{itemize}
 Parameter Settings:
 \begin{itemize}
-    \item $N_{\tau} = 4$ (adjusted to balance between empirical runtime and
+    \item $N_{\tau} = 5$ (adjusted to balance between empirical runtime and
         performance) % TODO
     \item $\gamma = 1$ (adjusted to maximize empirical performance)% TODO
     \item $\delta = 0.01$ (following Schulman et. al.)% TODO
@@ -103,7 +103,7 @@ Constraint Optimization Method:
     \item I used scipy's optimize.minimize function, with the ``trust-constr''
         method. All gradients and hessians were automatically calculated. A
         tolerance of $1 \times 10^{-2}$ and a maximum iteration limit of
-        $100$ were used.
+        $500$ were used.
 \end{itemize}
 \subsection*{Results}
 \begin{centering}
