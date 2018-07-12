@@ -1,0 +1,83 @@
+\documentclass[a4paper]{article}
+\setlength\parindent{0pt}
+
+\usepackage{pgfplots}
+\usepackage{amsthm, amsmath, amssymb, verbatim, enumerate, mathtools, algorithm}
+\usepackage{pgf}
+\usepackage{hyperref}
+\def\labelitemi{--}
+\pgfplotsset{compat=newest}
+
+\pagestyle{empty}
+
+\title{Research Paper Ideas}
+\author{Rishikesh Vaishnav}
+\begin{document}
+\maketitle
+\section*{Trust Region Policy Optimization}
+\subsection*{Reducing Approximations}
+\begin{itemize}
+    \item How does the replacement of the penalty term with a constraint affect
+        the monotonic improvement guarantee, and if the guarantee no longer
+        holds, how can we (perhaps dynamically) adjust $\delta$ in the
+        constraint to better ensure monotonic improvement?
+    \begin{itemize}
+        \item This will likely require knowledge of constraint optimization
+            algorithms.
+    \end{itemize}
+    \item Instead of replacing $D_{KL}^{max}$ with the expected KL-divergence
+        $\bar{D}_{KL}^{\rho}$, can we replace it with something that better
+        approximates $D_{KL}^{max}$?
+    \item Considering the theory behind equation (14) and the single path and
+        vine implementations of TRPO, it seems like the authors implicitly
+        approximate the normalized discounted visitation frequencies $(1 -
+        \gamma)p_{\pi_{\theta_{old}}}(s) = (1 - \gamma)(P(s_0 = s) + \gamma
+        P(s_1 = s) + \gamma^{2} P(s_2 = s) + \dots)$ with the on-policy
+        distribution of states under $\pi_{\theta_{old}}$. To what extent can
+        this be justified? It seems that they are not necessarily equal,
+        because the former depends on the discount factor $\gamma$, while the
+        latter does not.
+\end{itemize}
+\subsection*{Improving Sample Efficiency}
+\begin{itemize}
+    \item To what extent can samples from previous runs (e.g. from runs using
+        values of $\theta$ older than $\theta_{old}$) be re-used in the current
+        iteration? Perhaps importance sampling can help here?
+\end{itemize}
+\subsection*{Generalizations}
+\begin{itemize}
+    \item How can we generalize the vine method beyond simulated environments?
+        Can resetting an uncontrolled environment to a state that is ``similar
+        enough'' to the branch point ever yield competent performance?
+\end{itemize}
+\newpage
+\section*{Proximal Policy Optimization}
+\subsection*{Improving Clipped Approximation Function}
+\begin{itemize}
+    \item Is there a way to robustly choose a clipping parameter $\epsilon$?
+        Can this parameter be dynamic?
+    \item The sample advantage $\hat{A}_t$ expanded in equation (10) seems
+        inherently biased towards 0 because it makes use of a $T$-step return
+        that bootstraps off of $V(s_T)$. How can this bias be addressed?
+\end{itemize}
+\subsection*{Investigating Other Potential Approximation Functions}
+\begin{itemize}
+    \item The clipping version of PPO only imposes a penalty (reduction in
+        approximated policy value) for a given sign of $\hat{A}$ if the
+        policies diverge in one direction (where ``direction'' refers to
+        whether $r_t(\theta) > 1$ or $r_t(\theta) < 1$), while the theory
+        behind TRPO would suggest imposing a penalty in both directions. Only
+        penalizing one direction could be helpful for increasing step size, but
+        doesn't this come at the cost of the monotonic improvement guarantee?
+        Is there a more precise way of modulating the tradeoff between step
+        size and monotonic improvement?
+    \item The original paper on TRPO replaced the penalty term with a
+        constraint because the penalty coefficient $C = \frac{4\epsilon
+        \gamma}{(1 - \gamma)^2}$ caused the step sizes to be ``too small.'' By
+        what standard is ``too small'' defined, and, after determining what
+        this is, can we alter $\beta$ in equation (8) to make sure we are
+        taking a step size that is as large as possible without being too big?
+        Section 4 presents a techique for modifying $\beta$, but there doesn't
+        seem to be much theory behind it, so can that be improved?
+\end{itemize}
+\end{document}
