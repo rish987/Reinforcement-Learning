@@ -1,0 +1,89 @@
+\documentclass[a4paper]{article}
+\setlength\parindent{0pt}
+
+\usepackage{pgfplots}
+\usepackage{amsthm, amsmath, amssymb, verbatim, enumerate, mathtools, algorithm}
+\usepackage{pgf}
+\usepackage{hyperref}
+\def\labelitemi{--}
+\def\labelitemii{--}
+\def\labelitemiii{--}
+\def\labelitemiv{--}
+\pgfplotsset{compat=newest}
+
+\pagestyle{empty}
+
+\title{Proximal Policy Optimization Demo}
+\author{Rishikesh Vaishnav}
+\begin{document}
+\maketitle
+\subsection*{Code}
+\begin{itemize}
+    \item The code for this project is available at: 
+    % TODO
+    \url{}.
+\end{itemize}
+\subsection*{Implementation Details}
+Pseudocode:
+\begin{itemize}
+    \item Initialize policy parameter $\theta$.
+    \item Iterate until convergence:
+    \begin{itemize}
+        \item Initialize/clear list $S$ of $\{G, \pi_{\theta}(s, a), s, a\}$.
+        \item Generate $N_{\tau}$ trajectories $\{\tau\}$, saving 
+            $\pi_{\theta}(s, a)$ for each $s, a$ encountered.
+        \item For each trajectory $\tau \in \{\tau\}$:
+        \begin{itemize}
+            \item For each $\{s, a\} \in \tau$:
+            \begin{itemize}
+                \item Calculate discounted return $G_{\theta}(s, a)$ from this
+                    time to end of episode.
+                \item Retrieve $\pi_{\theta}(a | s)$ at this $(s, a)$.
+                \item Store $(G, \pi_{\theta}(a | s), s, a)$ in $S$.
+            \end{itemize}
+        \end{itemize}
+        \item Use automatic differentiation library to calculate the gradient
+            $\nabla_{\theta}L^{CLIP}(\theta)$ of:
+        \begin{align*}
+            L^{CLIP}(\theta) &= \frac{1}{|S|}\sum_{(G, \pi_{\theta_{old}}(a |
+            s), s, a) \in S} min\left(\frac{\pi_{\theta}(a |
+            s)}{\pi_{\theta_{old}}(a | s)}G, clip\left(\frac{\pi_{\theta}(a |
+            s)}{\pi_{\theta_{old}}(a | s)}, 1 - \epsilon, 1 +
+            \epsilon\right)G\right)
+        \end{align*}
+        \item $\theta = \theta + \alpha\nabla_{\theta}L^{CLIP}(\theta)$.
+    \end{itemize}
+\end{itemize}
+Parameter Settings:
+\begin{itemize}
+    \item $\alpha = $ % TODO
+    \item $\epsilon = 0.2$ (as per Schulman et. al.)
+    \item $\gamma = 1$ (adjusted to maximize empirical performance)
+\end{itemize}
+Policy Function Encoding:
+\begin{itemize}
+    \item Each state-action pair is converted to the feature vector $x(s, a)$.
+        Letting $S_{obs}$ and $S_{act}$ be the size of the observation and
+        action spaces, respectively, the size of the vector is $S_{obs} \times
+        S_{act}$, where all features are $0$ except for the $S_{obs}$ features
+        starting at index $S_{obs} \times a$, which are set to the
+        environment's parameterization of $s$.
+    \begin{itemize}
+        \item In this case, $S_{obs} = 4$ and $S_{act} = 2$.
+    \end{itemize}
+    \item The policy function $\pi(a | s, \theta)$ performs the softmax on a
+        parameterized linear mapping of feature vectors:
+        \begin{align*}
+            \pi(a | s, \theta) &= \frac{e^{\theta^T x(s, a)}}
+            {\sum_{b} e^{\theta^T x(s, b)}}\\
+        \end{align*}
+\end{itemize}
+\subsection*{Results}
+\begin{centering}
+    % TODO
+\end{centering}
+\begin{itemize}
+    % TODO
+    \item 
+\end{itemize}
+\end{document}
