@@ -7,3 +7,8 @@ Reinforcement Learning: State of the Art
 - Chapter 18
 
 - TRPO: way to robustly choose delta?
+    \begin{itemize}
+        \item Cheaper optimization than CO?
+    \end{itemize}
+    \item OpenAI Baselines
+    \item Use NN to approximate constraint optimization results?
