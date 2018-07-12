@@ -5,3 +5,5 @@ General Interest: Function Approximation with Continuous Action Spaces
 Reinforcement Learning: State of the Art
 - Chapter 7
 - Chapter 18
+
+- TRPO: way to robustly choose delta?
