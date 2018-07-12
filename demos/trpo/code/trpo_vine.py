@@ -19,10 +19,6 @@ RAND_SEED = 0;
 np.random.seed(RAND_SEED);
 random.seed(RAND_SEED);
 
-# enumerated run modes (single path or vine)
-SINGLE_PATH_MODE = 0;
-VINE_MODE = 1;
-
 # Policy agent with various utility functions for use in emulation/training.
 class Agent(object):
     def __init__(self, action_space):
@@ -86,17 +82,12 @@ MAX_STEPS = 200;
 
 # training parameters
 gamma = 1.0;
-# number of trajectories per iteration
-NUM_TRAJ = 105;
-VINE_TRAJ = 5;
-VINE_SAMP = 50;
+VINE_TRAJ = 20;
+VINE_SAMP = 200;
+TRAJ_PER_ITER = VINE_TRAJ + (VINE_SAMP * env.action_space.n);
+TRAJ_PER_VINE_TRAJ = int(TRAJ_PER_ITER / VINE_TRAJ);
 delta = 0.01;
 MAX_ITERS = 500;
-
-if (VINE_SAMP * env.action_space.n + VINE_TRAJ) != NUM_TRAJ:
-    print("WARNING: per-iteration trajectory count not equal for all" \
-            + " methods.");
-    quit();
 
 # paramerization of policy to be deployed at vine sample states
 # CURRENT POLICY: equal likelihood policy
@@ -104,7 +95,7 @@ theta_vine = np.zeros((env.observation_space.shape[0] \
         * env.action_space.n,));
 
 # number of episodes in a single run
-MAX_EPISODES = NUM_ITER * NUM_TRAJ;
+MAX_EPISODES = NUM_ITER * TRAJ_PER_ITER;
 # -
 
 # Calculate KL Divergence of two policies under a certain state.
@@ -191,7 +182,7 @@ def run_episode(theta, s_a=None):
 
 # Performs a training run, returning an ordered 
 # list of episode lengths.
-def TRPO_training_run(mode):
+def TRPO_training_run():
     # sequence of episode lengths for this run
     ep_lengths = np.zeros((MAX_EPISODES,));
 
@@ -200,88 +191,64 @@ def TRPO_training_run(mode):
     theta = np.zeros((env.observation_space.shape[0] \
             * env.action_space.n,));
 
-    # is the mode single-path mode?
-    single_path = (mode == SINGLE_PATH_MODE);
-
     # continue training until cutoff
     for iter_i in range(NUM_ITER):
         print("\titeration: " + str(iter_i + 1) + "/" + str(NUM_ITER));
         # to store list of data tuples at each sample state and action
         S = [];
 
-        # determine number of (super) trajectories based on mode
-        num_traj = NUM_TRAJ if single_path else VINE_TRAJ;
-
         # to store all states along all trajectories in the case of vine
         all_states = [];
 
-        # go through all (super) trajectories
-        for traj_i in range(num_traj): 
+        # go through all super trajectories
+        for traj_i in range(VINE_TRAJ): 
             # - run episode -
             rewards, states, actions, t = run_episode(theta);
 
             # total time of episode
             T = t + 1;
 
+            # add states to list
             all_states += states;
 
-            if single_path:
-                # set this episode's length only
-                ep_lengths[traj_i + (iter_i * NUM_TRAJ)] += T;
-            else:
-                # duplicate this result for the next VINE_SAMP * 2 episodes,
-                # rather than using the results from the vine trajectories
-                for i in range(int(NUM_TRAJ / VINE_TRAJ)):
-                    ep_lengths[i + (iter_i * NUM_TRAJ)] += T;
+            ep_lengths_off = (iter_i * TRAJ_PER_ITER) \
+                    + (traj_i * TRAJ_PER_VINE_TRAJ);
+
+            # duplicate this result for the next VINE_SAMP * 2 episodes,
+            # rather than using the results from the vine trajectories
+            for i in range(TRAJ_PER_VINE_TRAJ):
+                ep_lengths[i + ep_lengths_off] += T;
 
             print('\t\tepisode length: ' + str(T));
+        for _ in range(VINE_SAMP):
+            # sample a state
+            s_state = random.choice(all_states);
 
-            # -
-            
-            # - calculate this S-tuple -
-            # this is not a super path
-            if single_path:
+            _, probs = agent.action_probs(s_state, theta_vine);
+
+            for _ in range(env.action_space.n):
+                # sample an action according to the vine policy
+                s_action = np.random.choice(a = range(env.action_space.n), \
+                        p = probs);
+
+                s_a = (s_state, s_action);
+
+                env.reset();
+                env.state = s_state;
+                # produce a trajectory from this state and action
+                rewards, states, actions, t = run_episode(theta, s_a);
+
+                T = t + 1;
+
                 # remaining discounted reward from this time
                 G = 0;
 
                 # go backwards through episode
                 for t in range(T)[::-1]:
                     G = rewards[t] + gamma * G;
-                    state = states[t];
-                    action = actions[t];
-                    G_div_p = G / agent.action_probs(state, theta)[1][action];
-                    S.append((G_div_p, state, action));
-            # -
-        if not single_path:
-            for _ in range(VINE_SAMP):
-                # sample a state
-                s_state = random.choice(all_states);
 
-                _, probs = agent.action_probs(s_state, theta_vine);
-
-                for _ in range(env.action_space.n):
-                    # sample an action according to the vine policy
-                    s_action = np.random.choice(a = range(env.action_space.n), \
-                            p = probs);
-
-                    s_a = (s_state, s_action);
-
-                    env.reset();
-                    env.state = s_state;
-                    # produce a trajectory from this state and action
-                    rewards, states, actions, t = run_episode(theta, s_a);
-
-                    T = t + 1;
-
-                    # remaining discounted reward from this time
-                    G = 0;
-
-                    # go backwards through episode
-                    for t in range(T)[::-1]:
-                        G = rewards[t] + gamma * G;
-
-                    G_div_p = G / probs[s_action];
-                    S.append((G_div_p, s_state, s_action));
+                G_div_p = G / probs[s_action];
+                S.append((G_div_p, s_state, s_action));
 
         # - update parameters -
         # this is not the last iteration, so updated parameters would be useful
@@ -309,7 +276,7 @@ ep_lengths = np.zeros((RUNS, MAX_EPISODES));
 for run_i in range(RUNS):
     print("run: " + str(run_i + 1) + "/" + str(RUNS));
 
-    ep_lengths[run_i, :] = TRPO_training_run(VINE_MODE);
+    ep_lengths[run_i, :] = TRPO_training_run();
 
 with open("vine_ep_lengths.dat", 'wb') as file:
     pickle.dump(ep_lengths, file);

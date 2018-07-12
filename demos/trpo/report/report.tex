@@ -109,11 +109,17 @@ Constraint Optimization Method:
 \begin{centering}
     \scalebox{0.6}{\input{TRPO_agent.pgf}} \\
 \end{centering}
+Note: It seems possible that these results would improve given more iterations.
+However, due to the large amount of time it takes for my computer to run the
+code, I decided not to run any more.
 \begin{itemize}
-    \item The results can be summarized as follows:
-    \begin{itemize}
-        % TODO
-        \item 
-    \end{itemize}
+    \item These results are promising, and similar to the results I got for
+        policy iteration. However, unlike the optimization in policy gradient
+        that exactly followed the policy gradient algorithm,
+        the optimization here was potentially imperfect due to the approximated
+        constraint optimization. Limiting factors include the tolerance and the
+        maximum iteration limit. If optimization were more exact, it seems
+        probable that this algorithm would outperform policy gradient in terms
+        of sample efficiency.
 \end{itemize}
 \end{document}
