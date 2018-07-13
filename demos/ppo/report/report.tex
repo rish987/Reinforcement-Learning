@@ -20,8 +20,7 @@
 \subsection*{Code}
 \begin{itemize}
     \item The code for this project is available at: 
-    % TODO
-    \url{}.
+    \url{https://github.com/rish987/Reinforcement-Learning/blob/master/demos/ppo/code/ppo.py}.
 \end{itemize}
 \subsection*{Implementation Details}
 Pseudocode:
@@ -56,7 +55,6 @@ Pseudocode:
 \end{itemize}
 Parameter Settings:
 \begin{itemize}
-    \item $\alpha = $ % TODO
     \item $\epsilon = 0.2$ (as per Schulman et. al.)
     \item $\gamma = 1$ (adjusted to maximize empirical performance)
 \end{itemize}
@@ -77,13 +75,22 @@ Policy Function Encoding:
             \pi(a | s, \theta) &= \frac{e^{\theta^T x(s, a)}}
             {\sum_{b} e^{\theta^T x(s, b)}}\\
         \end{align*}
+    \item Gradient calculation was performed on the objective using the 
+        autograd library. Various constant learning rates were tested.
 \end{itemize}
 \subsection*{Results}
 \begin{centering}
-    % TODO
+    \scalebox{0.6}{\input{PPO_agent.pgf}} \\
 \end{centering}
 \begin{itemize}
-    % TODO
-    \item 
+    \item Clearly, the learning rate had a significant effect on performance.
+        Smaller learning rates were prohibitive, but after the learning rate
+        passed a certain threshold, the problem became feasable.
+    \item It is important to note that the sample complexity is far inferior to
+        TRPO. This may reflect a poor choice in hyperparameters more than an
+        inherent weakness in the algorithm. However, because the update at each
+        iteration was very simple, the code ran significantly faster.
+    \item Possible areas of improvement include a dynamic learning rate, more
+        effective trajectory per iteration count, and a different epsilon.
 \end{itemize}
 \end{document}

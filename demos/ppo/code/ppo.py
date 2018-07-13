@@ -6,6 +6,7 @@ import autograd.numpy as np;
 import gym;
 import random;
 import matplotlib.pyplot as plt;
+from labellines import labelLine, labelLines;
 import pickle;
 from autograd import grad;
 
@@ -13,6 +14,12 @@ RAND_SEED = 0;
 
 np.random.seed(RAND_SEED);
 random.seed(RAND_SEED);
+
+# - graph parameters -
+plt.rc('text', usetex=True);
+
+ALPHA_COLOR_MULT = 0.3;
+# - 
 
 # Policy agent with various utility functions for use in emulation/training.
 class Agent(object):
@@ -70,12 +77,14 @@ env = gym.make('CartPole-v0')
 env.seed(RAND_SEED);
 agent = Agent(env.action_space)
 
-NUM_ITER = 50;
-RUNS = 5;
+NUM_ITER = 100;
+RUNS = 10;
+#NUM_ITER = 2;
+#RUNS = 2;
 MAX_STEPS = 200;
 
 # training parameters
-alpha = 0.1;
+alphas = [0.001, 0.01, 0.1];
 gamma = 1.0;
 NUM_TRAJ = 5;
 epsilon = 0.02;
@@ -105,7 +114,7 @@ def objective(theta, S):
 
 # Performs a training run, returning an ordered 
 # list of episode lengths.
-def PPO_training_run():
+def PPO_training_run(alpha):
     # sequence of episode lengths for this run
     ep_lengths = np.zeros((MAX_EPISODES,));
 
@@ -136,7 +145,7 @@ def PPO_training_run():
 
             for t in range(MAX_STEPS):
                 # optional - render episodes
-                env.render();
+                #env.render();
 
                 action = agent.act(state, theta);
 
@@ -185,32 +194,41 @@ def PPO_training_run():
 
     return ep_lengths;
 
-# - perform runs -
-# sequence of episode lengths, totaled over all RUNS
-ep_lengths = np.zeros((RUNS, MAX_EPISODES));
+# mapping from alpha to episode length sequence
+alpha_to_ep_lengths = {};
 
-for run_i in range(RUNS):
-    print("run: " + str(run_i + 1) + "/" + str(RUNS));
+for alpha in alphas:
+    print("Alpha: " + str(alpha));
 
-    ep_lengths[run_i, :] = PPO_training_run();
+    # sequence of episode lengths, totaled over all RUNS
+    ep_lengths_tot = np.zeros((MAX_EPISODES,));
 
-with open("single_path_ep_lengths.dat", 'wb') as file:
-    pickle.dump(ep_lengths, file);
+    for run_i in range(RUNS):
+        print("\trun: " + str(run_i + 1) + "/" + str(RUNS));
 
-ep_lengths_avg = np.sum(ep_lengths, axis=0).astype(float) / RUNS;
-# - 
+        ep_lengths_tot = ep_lengths_tot + PPO_training_run(alpha);
 
-# - plot results -
-x = np.array(range(1, len(ep_lengths_avg) + 1)).astype(float);
-y = ep_lengths_avg;
-color = (0.0, 0.0, 0.0);
-plt.plot(x, y, linestyle='-', color=color);
+    alpha_to_ep_lengths[alpha] = ep_lengths_tot / RUNS;
+
+alpha_i = 0;
+for alpha in alphas:
+    ep_lengths = alpha_to_ep_lengths[alpha];
+    x = np.array(range(1, len(ep_lengths) + 1)).astype(float);
+    y = ep_lengths;
+    #color = (np.random.rand(), np.random.rand(), np.random.rand());
+    color = (alpha_i * ALPHA_COLOR_MULT, alpha_i * ALPHA_COLOR_MULT, \
+            alpha_i * ALPHA_COLOR_MULT);
+    plt.plot(x, y, linestyle='-', color=color, label="$\\alpha =$ " \
+            + str(alpha));
+
+    alpha_i += 1;
 
 plt.ylabel("Average Episode Length (" + str(RUNS) + " Runs)");
 plt.xlabel("Episode");
-plt.title("Trust Region Policy Optimization Results");
+plt.title("Proximal Policy Optimization Results");
 
-plt.savefig("TRPO_agent.pgf");
+labelLines(plt.gca().get_lines(),zorder=2.5)
+
+plt.savefig("PPO_agent.pgf");
 
 plt.show();
-# -
