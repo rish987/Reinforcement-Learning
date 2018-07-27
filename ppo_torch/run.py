@@ -1,9 +1,11 @@
 # File: run.py 
 # Author(s): Rishikesh Vaishnav
-# Created: 26/07/2018
+# Created: 07/26/2018
 # Description:
 # Main runner class for implementation of OpenAI PPO, using PyTorch instead of
 # TensorFlow.
+from imports import *
+from misc_utils import set_random_seed
 
 # - hyperparameters -
 # -- neural network parameters --
@@ -19,6 +21,8 @@ num_timesteps  =  1e6
 # number of timesteps in a single run (simulated trajectory with fixed
 # parameters)
 timesteps_per_run = 2048
+# random seed
+seed = 0
 # -- 
 
 # epsilon as described by Schulman et. al.
@@ -41,3 +45,25 @@ gamma = 0.99
 lambda_ = 0.95
 # -- 
 # - 
+
+# TODO replace with passed-in environment
+env_name = "InvertedPendulum-v2"
+
+"""
+Trains a PPO agent according to given parameters and reports results.
+"""
+def train():
+    # set up environment 
+    env = gym.make(env_name)
+    env.seed(seed)
+
+    # set random seeds
+    set_random_seed(seed, env)
+
+    # 
+
+def main():
+    train()
+
+if __name__ == '__main__':
+    main()
