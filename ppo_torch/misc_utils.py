@@ -16,3 +16,13 @@ def set_random_seed(seed, env=None):
     torch.manual_seed(seed)
     np.random.seed(seed)
     random.seed(seed)
+
+# - keys of rollout entries -
+# episode lengths in this rollout
+RO_EP_LEN = 'ep_lens'
+RO_EP_RET = 'ep_rets'
+RO_OB = 'obs'
+RO_AC = 'acs'
+RO_ADV_GL = 'advs_gl'
+RO_VAL_GL = 'vals_gl'
+# - 
