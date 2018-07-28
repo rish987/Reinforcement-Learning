@@ -92,9 +92,6 @@ class PPOModel(object):
         # - 
 
         # calculate value loss
-        print(vals_gl[:, None])
-        print(self.value_net(torch.from_numpy(obs)))
-        print(self.value_net(torch.from_numpy(obs)) - torch.from_numpy(vals_gl))
         val_loss = torch.mean(torch.pow(self.value_net(torch.from_numpy(obs)) \
                 - torch.from_numpy(vals_gl[:, None]), 2.0))
         #print("pol_loss: {0} \t val_loss: {1}".format(pol_loss, val_loss))
