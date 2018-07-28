@@ -6,6 +6,7 @@
 # (PPO), using PyTorch instead of TensorFlow.
 from imports import *
 from misc_utils import set_random_seed
+from misc_utils import RO_EP_LEN, RO_EP_RET, RO_OB, RO_AC, RO_ADV_GL, RO_VAL_GL
 from ppo_model import PPOModel
 from rollout import get_rollout
 # TODO too slow to use torch.DoubleTensor instead of torch.FloatTensor?
@@ -67,7 +68,8 @@ def train():
 
     # create relevant PPO networks
     # TODO implement PPOModel ctor, pass in relevant parameters
-    model = PPOModel(env, num_hidden_layers, hidden_layer_size)
+    model = PPOModel(env, num_hidden_layers, hidden_layer_size, alpha,\
+            clip_param)
 
     # total number of timesteps trained so far
     timesteps = 0
@@ -82,6 +84,8 @@ def train():
         # - SGD setup - 
         # get a rollout under this model for training
         rollout = rollout_gen.__next__()
+        print(model.loss(rollout[RO_OB], rollout[RO_AC], rollout[RO_ADV_GL],\
+            rollout[RO_VAL_GL]))
         import sys
         sys.exit()
 

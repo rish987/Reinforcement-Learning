@@ -9,14 +9,34 @@ from imports import *
 Encapsulates relevant PPO parameters and procedures.
 """
 class PPOModel(object):
-    def __init__(self, env, num_hidden_layers, hidden_layer_size):
+    def __init__(self, env, num_hidden_layers, hidden_layer_size, alpha, \
+        clip_param):
+        # - set up networks -
         self.policy_net = \
             PolicyNetVar(env, num_hidden_layers, hidden_layer_size)
+
         self.policy_net_old = \
             PolicyNetVar(env, num_hidden_layers, hidden_layer_size)
+        for param in self.policy_net_old.parameters():
+            param.requires_grad = False
 
         self.value_net = \
             GeneralNet(env, num_hidden_layers, hidden_layer_size, 1)
+        # - 
+
+        self.clip_param = clip_param
+
+        # set up optimizer
+        self.optimizer = optim.Adam(self.trainable_parameters(), alpha)
+
+    """
+    Generator for all parameters to be trained by this model.
+    """
+    def trainable_parameters(self):
+        for parameter in self.policy_net.parameters():
+            yield parameter
+        for parameter in self.value_net.parameters():
+            yield parameter
 
     """
     Executes the policy function on the given observation 'ob'.
@@ -35,6 +55,36 @@ class PPOModel(object):
     """
     def eval_value(self, ob):
         return self.value_net(ob)
+
+    """
+    Updates the parameters of the model according to the Adam framework.
+    """
+    def adam_update(self, obs, acs, advs_gl, vals_gl):
+        # clear gradients
+        self.optimizer.zeros_grad()
+        # TODO implement PPOModel.loss()
+        loss = self.loss(obs, acs, advs_gl, vals_gl)
+        loss.backward()
+        self.optimizer.step()
+        
+    """
+    Calculates the total loss with the given batch data.
+    """
+    def loss(self, obs, acs, advs_gl, vals_gl):
+        # TODO ensure this becomes one after implementing old and new set equal
+        ratio = torch.exp(self.policy_net.logp(acs, obs) - \
+                self.policy_net_old.logp(acs, obs))
+
+        surr1 = ratio * torch.from_numpy(advs_gl)
+        surr2 = torch.clamp(ratio, min=1.0 - self.clip_param, max=1.0 +\
+                self.clip_param) \
+            * torch.from_numpy(advs_gl)
+        pol_loss = torch.mean(torch.min(surr1, surr2))
+
+        val_loss = torch.mean(torch.pow(self.value_net(torch.from_numpy(obs)) \
+            - torch.from_numpy(vals_gl), 2.0))
+
+        return pol_loss + val_loss
 
 """
 Neural network and standard deviation for the policy function.
@@ -58,7 +108,32 @@ class PolicyNetVar(object):
         # output mean with some gaussian noise according to self.logstd
         else:
             return torch.normal(mean=self.policy_net(ob),\
-                std=torch.exp(self.logstd))
+                std=self.std())
+    """
+    Returns all of this policy's parameters.
+    """
+    def parameters(self):
+        for param in self.policy_net.parameters():
+            yield param
+        yield self.logstd
+
+    def std(self):
+        return torch.exp(self.logstd)
+
+    """
+    Returns the log-probability of the given action "ac" given the observation
+    "ob".
+    """
+    def logp(self, ac, ob):
+        mean = self.policy_net(torch.from_numpy(ob))
+        ac_t = torch.from_numpy(ac)
+        dimension = float(ac.shape[1])
+
+        ret = (0.5 * torch.sum(torch.pow((ac_t - mean) / self.std(), 2.0),
+            dim=1)) + (0.5 * torch.log(torch.tensor(2.0 * np.pi)) *\
+            torch.tensor(dimension)) + torch.sum(self.logstd)
+
+        return ret
 """
 Neural network for the policy/value/etc. function.
 """
@@ -68,21 +143,23 @@ class GeneralNet(nn.Module):
         super(GeneralNet, self).__init__()
 
         # to hold fully connected layers
-        self.fc = [];
+        layers = [];
 
         # TODO use correct initializers?
         
         # add first layer, coming directly from the observation
-        self.fc.append(nn.Linear(env.observation_space.shape[0],\
+        layers.append(nn.Linear(env.observation_space.shape[0],\
             hidden_layer_size))
 
         # go through all remaining layers
         for _ in range(num_hidden_layers - 1):
-            self.fc.append(nn.Linear(hidden_layer_size, hidden_layer_size))
+            layers.append(nn.Linear(hidden_layer_size, hidden_layer_size))
 
         # the output layer is an action-space-dimensional value
-        self.fc.append(nn.Linear(hidden_layer_size, \
+        layers.append(nn.Linear(hidden_layer_size, \
             last_layer_size))
+
+        self.fc = nn.ModuleList(layers)
 
     def forward(self, x):
         for layer_i in range(len(self.fc) - 1):
