@@ -84,7 +84,7 @@ def train():
         network.load_state_dict(state_dict)
 
         # get value on dummy observation
-        print(network(torch.tensor([1.0, 2.0, 3.0, 4.0])))
+        #print(network(torch.tensor([1.0, 2.0, 3.0, 4.0])))
 
     # - TODO delete experimenting
 

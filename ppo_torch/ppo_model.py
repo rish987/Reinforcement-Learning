@@ -82,7 +82,6 @@ class PPOModel(object):
     def loss(self, obs, acs, advs_gl, vals_gl):
         ratio = torch.exp(self.policy_net.logp(acs, obs) - \
                 self.policy_net_old.logp(acs, obs))
-        print(ratio)
 
         # - calculate policy loss -
         surr1 = ratio * torch.from_numpy(advs_gl)
@@ -93,8 +92,11 @@ class PPOModel(object):
         # - 
 
         # calculate value loss
+        print(vals_gl[:, None])
+        print(self.value_net(torch.from_numpy(obs)))
+        print(self.value_net(torch.from_numpy(obs)) - torch.from_numpy(vals_gl))
         val_loss = torch.mean(torch.pow(self.value_net(torch.from_numpy(obs)) \
-            - torch.from_numpy(vals_gl), 2.0))
+                - torch.from_numpy(vals_gl[:, None]), 2.0))
         #print("pol_loss: {0} \t val_loss: {1}".format(pol_loss, val_loss))
 
         return pol_loss, val_loss
