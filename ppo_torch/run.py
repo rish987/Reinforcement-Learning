@@ -5,7 +5,7 @@
 # Main runner file for implementation of OpenAI Proximal Policy Optimization 
 # (PPO), using PyTorch instead of TensorFlow.
 from imports import *
-from misc_utils import set_random_seed
+from misc_utils import set_random_seed, Dataset
 from misc_utils import RO_EP_LEN, RO_EP_RET, RO_OB, RO_AC, RO_ADV_GL, RO_VAL_GL
 from ppo_model import PPOModel
 from rollout import get_rollout
@@ -67,9 +67,26 @@ def train():
     set_random_seed(seed, env)
 
     # create relevant PPO networks
-    # TODO implement PPOModel ctor, pass in relevant parameters
     model = PPOModel(env, num_hidden_layers, hidden_layer_size, alpha,\
             clip_param)
+
+    # TODO delete experimenting -
+
+    for dict_name, network in [("value_net", model.value_net), \
+        ("pol_net", model.policy_net.policy_net)]:
+        # load parameters from tf implementation into model.policy_net
+        with open(dict_name + '_state_dict', 'rb') as file:
+            state_dict = pickle.load(file)
+
+        for key in state_dict:
+            state_dict[key] = torch.tensor(state_dict[key])
+
+        network.load_state_dict(state_dict)
+
+        # get value on dummy observation
+        print(network(torch.tensor([1.0, 2.0, 3.0, 4.0])))
+
+    # - TODO delete experimenting
 
     # total number of timesteps trained so far
     timesteps = 0
@@ -84,39 +101,43 @@ def train():
         # - SGD setup - 
         # get a rollout under this model for training
         rollout = rollout_gen.__next__()
-        print(model.loss(rollout[RO_OB], rollout[RO_AC], rollout[RO_ADV_GL],\
-            rollout[RO_VAL_GL]))
-        import sys
-        sys.exit()
 
         # update old policy function to new policy function
-        # TODO implement PPOModel.update_old_pol()
         model.update_old_pol()
 
-        # place data into dataset that will shuffle and batch them for training
-        # TODO implement Dataset ctor
-        data = Dataset(dict(ob=rollout[RO_OB], ac=rollout[RO_AC],\
-            adv=rollout[RO_ADV_GL], val=rollout[RO_VAL_GL]))
+        # TODO delete experimenting - 
+        print(model.loss(rollout[RO_OB], rollout[RO_AC],\
+                    rollout[RO_ADV_GL], rollout[RO_VAL_GL]))
+        import sys
+        sys.exit()
+        # - TODO delete experimenting
 
-        # linearly decrease learning rate
-        alpha_decay_factor = \
-                max(1.0 - float(timesteps) / num_timesteps, 0)
+        # place data into dataset that will shuffle and batch them for training
+        data = Dataset({RO_OB:rollout[RO_OB], RO_AC:rollout[RO_AC],\
+            RO_ADV_GL:rollout[RO_ADV_GL], RO_VAL_GL:rollout[RO_VAL_GL]})
+
+        # linearly decrease learning rate TODO delete?
+#        alpha_decay_factor = \
+#                max(1.0 - float(timesteps) / num_timesteps, 0)
         # - 
 
         # - SGD training -
         # go through all epochs
-        for _ in num_epochs:
+        for e in range(num_epochs):
             # go through all randomly organized batches
-            # TODO implement Dataset.iterate()
-            for batch in d.iterate(batch_size):
+            for batch in data.iterate_once(batch_size):
                 # get gradient
-                # TODO implement PPOModel.adam_update()
                 model.adam_update(batch[RO_OB], batch[RO_AC],\
                     batch[RO_ADV_GL], batch[RO_VAL_GL])
         # - 
 
         # update total timesteps traveled so far
-        timesteps += rollout[RO_EP_LEN].sum()
+        timesteps += np.sum(rollout[RO_EP_LEN])
+        print("Time Elapsed: {0}; Average Reward: {1}".format(timesteps, 
+            np.mean(rollout[RO_EP_LEN])))
+
+        import sys
+        sys.exit()
     # - 
 
 def main():

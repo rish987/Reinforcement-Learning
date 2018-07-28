@@ -17,6 +17,8 @@ class PPOModel(object):
 
         self.policy_net_old = \
             PolicyNetVar(env, num_hidden_layers, hidden_layer_size)
+
+        # prevent old policy from being considered in update
         for param in self.policy_net_old.parameters():
             param.requires_grad = False
 
@@ -28,6 +30,12 @@ class PPOModel(object):
 
         # set up optimizer
         self.optimizer = optim.Adam(self.trainable_parameters(), alpha)
+
+    """
+    Sets the old policy to have the same parameters as the new policy.
+    """
+    def update_old_pol(self):
+        self.policy_net_old.copy_params(self.policy_net)
 
     """
     Generator for all parameters to be trained by this model.
@@ -61,30 +69,35 @@ class PPOModel(object):
     """
     def adam_update(self, obs, acs, advs_gl, vals_gl):
         # clear gradients
-        self.optimizer.zeros_grad()
-        # TODO implement PPOModel.loss()
-        loss = self.loss(obs, acs, advs_gl, vals_gl)
+        self.optimizer.zero_grad()
+        pol_loss, val_loss = self.loss(obs, acs, advs_gl, vals_gl)
+        loss = pol_loss + val_loss
         loss.backward()
+        # TODO is adam going in the right direction?
         self.optimizer.step()
         
     """
     Calculates the total loss with the given batch data.
     """
     def loss(self, obs, acs, advs_gl, vals_gl):
-        # TODO ensure this becomes one after implementing old and new set equal
         ratio = torch.exp(self.policy_net.logp(acs, obs) - \
                 self.policy_net_old.logp(acs, obs))
+        print(ratio)
 
+        # - calculate policy loss -
         surr1 = ratio * torch.from_numpy(advs_gl)
         surr2 = torch.clamp(ratio, min=1.0 - self.clip_param, max=1.0 +\
                 self.clip_param) \
             * torch.from_numpy(advs_gl)
-        pol_loss = torch.mean(torch.min(surr1, surr2))
+        pol_loss = -torch.mean(torch.min(surr1, surr2))
+        # - 
 
+        # calculate value loss
         val_loss = torch.mean(torch.pow(self.value_net(torch.from_numpy(obs)) \
             - torch.from_numpy(vals_gl), 2.0))
+        #print("pol_loss: {0} \t val_loss: {1}".format(pol_loss, val_loss))
 
-        return pol_loss + val_loss
+        return pol_loss, val_loss
 
 """
 Neural network and standard deviation for the policy function.
@@ -95,6 +108,15 @@ class PolicyNetVar(object):
             hidden_layer_size, env.action_space.shape[0])
         self.logstd = torch.zeros(env.action_space.shape[0], \
             requires_grad=True)
+
+    """
+    Copies the parameters from the specified PolicyNetVar into this one.
+    """
+    def copy_params(self, other):
+        # copy logstd parameter
+        self.logstd.data = other.logstd.clone()
+        # copy all other parameters
+        self.policy_net.load_state_dict(other.policy_net.state_dict())
 
     """
     Returns an action, stochastically or deterministically, given the output
