@@ -70,24 +70,6 @@ def train():
     model = PPOModel(env, num_hidden_layers, hidden_layer_size, alpha,\
             clip_param)
 
-    # TODO delete experimenting -
-
-    for dict_name, network in [("value_net", model.value_net), \
-        ("pol_net", model.policy_net.policy_net)]:
-        # load parameters from tf implementation into model.policy_net
-        with open(dict_name + '_state_dict', 'rb') as file:
-            state_dict = pickle.load(file)
-
-        for key in state_dict:
-            state_dict[key] = torch.tensor(state_dict[key])
-
-        network.load_state_dict(state_dict)
-
-        # get value on dummy observation
-        #print(network(torch.tensor([1.0, 2.0, 3.0, 4.0])))
-
-    # - TODO delete experimenting
-
     # total number of timesteps trained so far
     timesteps = 0
 
@@ -104,13 +86,6 @@ def train():
 
         # update old policy function to new policy function
         model.update_old_pol()
-
-        # TODO delete experimenting - 
-        print(model.loss(rollout[RO_OB], rollout[RO_AC],\
-                    rollout[RO_ADV_GL], rollout[RO_VAL_GL]))
-        import sys
-        sys.exit()
-        # - TODO delete experimenting
 
         # place data into dataset that will shuffle and batch them for training
         data = Dataset({RO_OB:rollout[RO_OB], RO_AC:rollout[RO_AC],\
@@ -135,9 +110,6 @@ def train():
         timesteps += np.sum(rollout[RO_EP_LEN])
         print("Time Elapsed: {0}; Average Reward: {1}".format(timesteps, 
             np.mean(rollout[RO_EP_LEN])))
-
-        import sys
-        sys.exit()
     # - 
 
 def main():

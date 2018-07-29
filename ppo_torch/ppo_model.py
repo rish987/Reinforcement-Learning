@@ -29,7 +29,7 @@ class PPOModel(object):
         self.clip_param = clip_param
 
         # set up optimizer
-        self.optimizer = optim.Adam(self.trainable_parameters(), alpha)
+        self.optimizer = optim.SGD(self.trainable_parameters(), 0.001)
 
     """
     Sets the old policy to have the same parameters as the new policy.
@@ -154,7 +154,7 @@ class PolicyNetVar(object):
             dim=1)) + (0.5 * torch.log(torch.tensor(2.0 * np.pi)) *\
             torch.tensor(dimension)) + torch.sum(self.logstd)
 
-        return ret
+        return -ret
 """
 Neural network for the policy/value/etc. function.
 """

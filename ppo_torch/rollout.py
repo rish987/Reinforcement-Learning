@@ -73,11 +73,6 @@ def get_rollout(env, model, timesteps_per_rollout, gamma, lambda_):
     vals = np.zeros(timesteps_per_rollout)
     # - 
 
-    # TODO remove experimenting -
-    with open('acs', 'rb') as file:
-        acs_to_take = pickle.load(file)
-    # - TODO remove experimenting
-
     # indefinitely continue generating rollouts when called
     while True: 
         # get the value of the current observation according to the model
@@ -109,10 +104,6 @@ def get_rollout(env, model, timesteps_per_rollout, gamma, lambda_):
 
         # timestep in this rollout
         timestep = (total_timesteps % timesteps_per_rollout)
-
-        # TODO remove experimenting -
-        ac = acs_to_take[timestep]
-        # - TODO remove experimenting
 
         next_ob, rew, next_new, _ = env.step(ac)
 
