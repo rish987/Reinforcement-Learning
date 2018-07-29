@@ -9,55 +9,56 @@ from misc_utils import set_random_seed, Dataset
 from misc_utils import RO_EP_LEN, RO_EP_RET, RO_OB, RO_AC, RO_ADV_GL, RO_VAL_GL
 from ppo_model import PPOModel
 from rollout import get_rollout
-# TODO too slow to use torch.DoubleTensor instead of torch.FloatTensor?
 torch.set_default_tensor_type('torch.DoubleTensor')
 
 # - hyperparameters -
 # -- neural network parameters --
 # number of nodes in each hidden layer
-hidden_layer_size  =  64
+g_hidden_layer_size = 64
 # number of hidden layers
-num_hidden_layers  =  2
+g_num_hidden_layers = 2
 # --
 
 # -- run parameters --
 # number of timesteps to train over
-num_timesteps  =  1e6
+g_num_timesteps = 1e6
 # number of timesteps in a single rollout (simulated trajectory with fixed
 # parameters)
-timesteps_per_rollout = 2048
+g_timesteps_per_rollout = 2048
 # random seed
-seed = 0
+g_seed = 0
 # -- 
 
 # epsilon as described by Schulman et. al.
-clip_param = 0.2
+g_clip_param = 0.2
 
 # -- SGD parameters --
 # number of training epochs per run
-num_epochs = 10
+g_num_epochs = 10
 # adam learning rate
-alpha = 3e-4
+g_alpha = 3e-4
 # number of randomly selected timesteps to use in a single parameter update
-batch_size = 64
+g_batch_size = 64
 # --
 
 # -- GAE parameters --
 # gamma and lambda factors used in Generalized Advantage Estimation (Schulman
 # et. al.) to trade off between variance and bias in return/advantage
 # approximation
-gamma = 0.99
-lambda_ = 0.95
+g_gamma = 0.99
+g_lambda_ = 0.95
 # -- 
 # - 
 
 # TODO replace with passed-in environment
-env_name = "InvertedPendulum-v2"
+g_env_name = "InvertedPendulum-v2"
 
 """
 Trains a PPO agent according to given parameters and reports results.
 """
-def train():
+def train(hidden_layer_size, num_hidden_layers, num_timesteps, \
+    timesteps_per_rollout, seed, clip_param, num_epochs, alpha, \
+    batch_size, gamma, lambda_, env_name):
     # - setup -
     # set up environment 
     env = gym.make(env_name)
@@ -109,12 +110,16 @@ def train():
         # update total timesteps traveled so far
         timesteps += np.sum(rollout[RO_EP_LEN])
         print("Time Elapsed: {0}; Average Reward: {1}".format(timesteps, 
-            np.mean(rollout[RO_EP_LEN])))
+            np.mean(rollout[RO_EP_LEN][-100:])))
     # - 
 
 def main():
-    # TODO pass in necessary parameters (use no globals)
-    train()
+    train(hidden_layer_size=g_hidden_layer_size, \
+        num_hidden_layers=g_num_hidden_layers, num_timesteps=g_num_timesteps, \
+        timesteps_per_rollout=g_timesteps_per_rollout, seed=g_seed, \
+        clip_param=g_clip_param, num_epochs=g_num_epochs, alpha=g_alpha, \
+        batch_size=g_batch_size, gamma=g_gamma, lambda_=g_lambda_, \
+        env_name=g_env_name)
 
 if __name__ == '__main__':
     main()

@@ -29,7 +29,7 @@ class PPOModel(object):
         self.clip_param = clip_param
 
         # set up optimizer
-        self.optimizer = optim.SGD(self.trainable_parameters(), 0.001)
+        self.optimizer = optim.Adam(self.trainable_parameters(), alpha)
 
     """
     Sets the old policy to have the same parameters as the new policy.
@@ -73,7 +73,6 @@ class PPOModel(object):
         pol_loss, val_loss = self.loss(obs, acs, advs_gl, vals_gl)
         loss = pol_loss + val_loss
         loss.backward()
-        # TODO is adam going in the right direction?
         self.optimizer.step()
         
     """
