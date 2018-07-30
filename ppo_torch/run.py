@@ -9,7 +9,7 @@ from misc_utils import set_random_seed, Dataset
 from misc_utils import RO_EP_LEN, RO_EP_RET, RO_OB, RO_AC, RO_ADV_GL, RO_VAL_GL
 from ppo_model import PPOModel
 from rollout import get_rollout
-torch.set_default_tensor_type('torch.DoubleTensor')
+torch.set_default_tensor_type('torch.cuda.DoubleTensor')
 
 # - hyperparameters -
 # -- neural network parameters --
@@ -58,7 +58,7 @@ Trains a PPO agent according to given parameters and reports results.
 """
 def train(hidden_layer_size, num_hidden_layers, num_timesteps, \
     timesteps_per_rollout, seed, clip_param, num_epochs, alpha, \
-    batch_size, gamma, lambda_, env_name):
+    batch_size, gamma, lambda_, env_name, device):
     # - setup -
     # set up environment 
     env = gym.make(env_name)
@@ -69,7 +69,7 @@ def train(hidden_layer_size, num_hidden_layers, num_timesteps, \
 
     # create relevant PPO networks
     model = PPOModel(env, num_hidden_layers, hidden_layer_size, alpha,\
-            clip_param)
+            clip_param, device)
 
     # total number of timesteps trained so far
     timesteps = 0
@@ -114,12 +114,13 @@ def train(hidden_layer_size, num_hidden_layers, num_timesteps, \
     # - 
 
 def main():
+    device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
     train(hidden_layer_size=g_hidden_layer_size, \
         num_hidden_layers=g_num_hidden_layers, num_timesteps=g_num_timesteps, \
         timesteps_per_rollout=g_timesteps_per_rollout, seed=g_seed, \
         clip_param=g_clip_param, num_epochs=g_num_epochs, alpha=g_alpha, \
         batch_size=g_batch_size, gamma=g_gamma, lambda_=g_lambda_, \
-        env_name=g_env_name)
+        env_name=g_env_name, device=device)
 
 if __name__ == '__main__':
     main()

@@ -77,7 +77,8 @@ def get_rollout(env, model, timesteps_per_rollout, gamma, lambda_):
     while True: 
         # get the value of the current observation according to the model
         # TODO get both action and value at once to enhance parallelism?
-        val = model.eval_value(torch.from_numpy(ob)).detach().numpy()
+        val = model.eval_value(torch.from_numpy(ob).cuda()).detach().cpu().\
+            numpy()
 
         # just completed a rollout
         if (total_timesteps > 0) and ((total_timesteps %\
@@ -85,7 +86,6 @@ def get_rollout(env, model, timesteps_per_rollout, gamma, lambda_):
             nextval = 0.0 if new else val
             advs_gl, vals_gl = get_adv_val_gl(rews, news, vals, nextval, \
                     gamma, lambda_, timesteps_per_rollout)
-            # TODO convert all to floats?
             yield \
             {
                 RO_EP_RET: ep_rets,
@@ -100,7 +100,8 @@ def get_rollout(env, model, timesteps_per_rollout, gamma, lambda_):
 
         # get the action that should be taken at the current observation
         # according to the model
-        ac = model.eval_policy_var(torch.from_numpy(ob)).detach().numpy()
+        ac = model.eval_policy_var(torch.from_numpy(ob).cuda()).detach().cpu().\
+                numpy()
 
         # timestep in this rollout
         timestep = (total_timesteps % timesteps_per_rollout)

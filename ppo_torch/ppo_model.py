@@ -10,20 +10,20 @@ Encapsulates relevant PPO parameters and procedures.
 """
 class PPOModel(object):
     def __init__(self, env, num_hidden_layers, hidden_layer_size, alpha, \
-        clip_param):
+        clip_param, device):
         # - set up networks -
         self.policy_net = \
-            PolicyNetVar(env, num_hidden_layers, hidden_layer_size)
+            PolicyNetVar(env, num_hidden_layers, hidden_layer_size, device)
 
         self.policy_net_old = \
-            PolicyNetVar(env, num_hidden_layers, hidden_layer_size)
+            PolicyNetVar(env, num_hidden_layers, hidden_layer_size, device)
 
         # prevent old policy from being considered in update
         for param in self.policy_net_old.parameters():
             param.requires_grad = False
 
         self.value_net = \
-            GeneralNet(env, num_hidden_layers, hidden_layer_size, 1)
+            GeneralNet(env, num_hidden_layers, hidden_layer_size, 1, device)
         # - 
 
         self.clip_param = clip_param
@@ -83,17 +83,16 @@ class PPOModel(object):
                 self.policy_net_old.logp(acs, obs))
 
         # - calculate policy loss -
-        surr1 = ratio * torch.from_numpy(advs_gl)
+        advs_gl_cuda = torch.from_numpy(advs_gl).cuda()
+        surr1 = ratio * advs_gl_cuda
         surr2 = torch.clamp(ratio, min=1.0 - self.clip_param, max=1.0 +\
-                self.clip_param) \
-            * torch.from_numpy(advs_gl)
+                self.clip_param) * advs_gl_cuda
         pol_loss = -torch.mean(torch.min(surr1, surr2))
         # - 
 
         # calculate value loss
-        val_loss = torch.mean(torch.pow(self.value_net(torch.from_numpy(obs)) \
-                - torch.from_numpy(vals_gl[:, None]), 2.0))
-        #print("pol_loss: {0} \t val_loss: {1}".format(pol_loss, val_loss))
+        val_loss = torch.mean(torch.pow(self.value_net(torch.from_numpy(obs).\
+            cuda()) - torch.from_numpy(vals_gl[:, None]).cuda(), 2.0))
 
         return pol_loss, val_loss
 
@@ -101,11 +100,11 @@ class PPOModel(object):
 Neural network and standard deviation for the policy function.
 """
 class PolicyNetVar(object):
-    def __init__(self, env, num_hidden_layers, hidden_layer_size):
+    def __init__(self, env, num_hidden_layers, hidden_layer_size, device):
         self.policy_net = GeneralNet(env, num_hidden_layers, \
-            hidden_layer_size, env.action_space.shape[0])
+            hidden_layer_size, env.action_space.shape[0], device)
         self.logstd = torch.zeros(env.action_space.shape[0], \
-            requires_grad=True)
+            requires_grad=True).to(device)
 
     """
     Copies the parameters from the specified PolicyNetVar into this one.
@@ -145,8 +144,8 @@ class PolicyNetVar(object):
     "ob".
     """
     def logp(self, ac, ob):
-        mean = self.policy_net(torch.from_numpy(ob))
-        ac_t = torch.from_numpy(ac)
+        mean = self.policy_net(torch.from_numpy(ob).cuda())
+        ac_t = torch.from_numpy(ac).cuda()
         dimension = float(ac.shape[1])
 
         ret = (0.5 * torch.sum(torch.pow((ac_t - mean) / self.std(), 2.0),
@@ -159,7 +158,7 @@ Neural network for the policy/value/etc. function.
 """
 class GeneralNet(nn.Module):
     def __init__(self, env, num_hidden_layers, hidden_layer_size,\
-            last_layer_size):
+            last_layer_size, device):
         super(GeneralNet, self).__init__()
 
         # to hold fully connected layers
@@ -180,6 +179,7 @@ class GeneralNet(nn.Module):
             last_layer_size))
 
         self.fc = nn.ModuleList(layers)
+        self.to(device)
 
     def forward(self, x):
         for layer_i in range(len(self.fc) - 1):
