@@ -13,14 +13,10 @@ class PPOModel(object):
         clip_param):
         # - set up networks -
         self.policy_net = \
-            PolicyNetVar(env, num_hidden_layers, hidden_layer_size)
+            PolicyNetVar(env, num_hidden_layers, hidden_layer_size, False)
 
         self.policy_net_old = \
-            PolicyNetVar(env, num_hidden_layers, hidden_layer_size)
-
-        # prevent old policy from being considered in update
-        for param in self.policy_net_old.parameters():
-            param.requires_grad = False
+            PolicyNetVar(env, num_hidden_layers, hidden_layer_size, True)
 
         self.value_net = \
             GeneralNet(env, num_hidden_layers, hidden_layer_size, 1)
@@ -101,11 +97,17 @@ class PPOModel(object):
 Neural network and standard deviation for the policy function.
 """
 class PolicyNetVar(object):
-    def __init__(self, env, num_hidden_layers, hidden_layer_size):
+    def __init__(self, env, num_hidden_layers, hidden_layer_size, fixed):
         self.policy_net = GeneralNet(env, num_hidden_layers, \
             hidden_layer_size, env.action_space.shape[0])
-        self.logstd = torch.zeros(env.action_space.shape[0], \
-            requires_grad=True)
+        self.logstd = nn.Parameter(torch.zeros(env.action_space.shape[0], \
+            requires_grad=(not fixed)))
+
+        if fixed:
+            # prevent old policy from being considered in update
+            for param in self.policy_net.parameters():
+                param.requires_grad = False
+
 
     """
     Copies the parameters from the specified PolicyNetVar into this one.

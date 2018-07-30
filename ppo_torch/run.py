@@ -9,6 +9,7 @@ from misc_utils import set_random_seed, Dataset
 from misc_utils import RO_EP_LEN, RO_EP_RET, RO_OB, RO_AC, RO_ADV_GL, RO_VAL_GL
 from ppo_model import PPOModel
 from rollout import get_rollout
+# TODO remove
 torch.set_default_tensor_type('torch.DoubleTensor')
 
 # - hyperparameters -
