@@ -85,7 +85,7 @@ def train(hidden_layer_size, num_hidden_layers, num_timesteps, \
         # - SGD setup - 
         # get a rollout under this model for training
         rollout = rollout_gen.__next__()
-
+        
         # update old policy function to new policy function
         model.update_old_pol()
 

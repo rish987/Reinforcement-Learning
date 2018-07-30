@@ -4,6 +4,7 @@
 # Description:
 # Class (PPOModel) that encapsulates relevant PPO parameters and procedures.
 from imports import *
+from misc_utils import from_numpy_dt
 
 """
 Encapsulates relevant PPO parameters and procedures.
@@ -19,7 +20,7 @@ class PPOModel(object):
             PolicyNetVar(env, num_hidden_layers, hidden_layer_size, True)
 
         self.value_net = \
-            GeneralNet(env, num_hidden_layers, hidden_layer_size, 1)
+            GeneralNet(env, num_hidden_layers, hidden_layer_size, 1).to(device)
         # - 
 
         self.clip_param = clip_param
@@ -98,11 +99,12 @@ class PPOModel(object):
 Neural network and standard deviation for the policy function.
 """
 class PolicyNetVar(object):
+    # TODO move to(device) back?
     def __init__(self, env, num_hidden_layers, hidden_layer_size, fixed):
         self.policy_net = GeneralNet(env, num_hidden_layers, \
-            hidden_layer_size, env.action_space.shape[0])
+            hidden_layer_size, env.action_space.shape[0]).to(device)
         self.logstd = nn.Parameter(torch.zeros(env.action_space.shape[0], \
-            requires_grad=(not fixed)))
+            requires_grad=(not fixed), device=device))
 
         if fixed:
             # prevent old policy from being considered in update
@@ -152,9 +154,11 @@ class PolicyNetVar(object):
         ac_t = from_numpy_dt(ac)
         dimension = float(ac.shape[1])
 
+        # TODO any other rogue tensors?
         ret = (0.5 * torch.sum(torch.pow((ac_t - mean) / self.std(), 2.0),
-            dim=1)) + (0.5 * torch.log(torch.tensor(2.0 * np.pi)) *\
-            torch.tensor(dimension)) + torch.sum(self.logstd)
+            dim=1)) + (0.5 * torch.log(torch.tensor(2.0 * np.pi, device=\
+            device)) * torch.tensor(dimension, device=device))\
+            + torch.sum(self.logstd)
 
         return -ret
 """

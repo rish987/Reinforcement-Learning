@@ -65,4 +65,11 @@ class Dataset(object):
 Gets a tensor from a numpy array in a certain datatype.
 """
 def from_numpy_dt(arr):
-    return torch.from_numpy(arr).to(torch.float)
+    return torch.from_numpy(arr).to(device=device, dtype=torch.float)
+
+"""
+Gets a detached numpy array from a tensor.
+"""
+def to_numpy_dt(tensor):
+    # TODO cpu() before or after detach()?
+    return tensor.cpu().detach().numpy()
