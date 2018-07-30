@@ -60,3 +60,9 @@ class Dataset(object):
             yield data_map
 
             self.next_i += batch_size
+
+"""
+Gets a tensor from a numpy array in a certain datatype.
+"""
+def from_numpy_dt(arr):
+    return torch.from_numpy(arr).to(torch.float)

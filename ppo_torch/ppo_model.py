@@ -79,16 +79,17 @@ class PPOModel(object):
                 self.policy_net_old.logp(acs, obs))
 
         # - calculate policy loss -
-        surr1 = ratio * torch.from_numpy(advs_gl)
+        # TODO use a method for from_numpy(X).to(torch.float)
+        surr1 = ratio * from_numpy_dt(advs_gl)
         surr2 = torch.clamp(ratio, min=1.0 - self.clip_param, max=1.0 +\
                 self.clip_param) \
-            * torch.from_numpy(advs_gl)
+            * from_numpy_dt(advs_gl)
         pol_loss = -torch.mean(torch.min(surr1, surr2))
         # - 
 
         # calculate value loss
-        val_loss = torch.mean(torch.pow(self.value_net(torch.from_numpy(obs)) \
-                - torch.from_numpy(vals_gl[:, None]), 2.0))
+        val_loss = torch.mean(torch.pow(self.value_net(from_numpy_dt(obs)) \
+                - from_numpy_dt(vals_gl[:, None]), 2.0))
         #print("pol_loss: {0} \t val_loss: {1}".format(pol_loss, val_loss))
 
         return pol_loss, val_loss
@@ -147,8 +148,8 @@ class PolicyNetVar(object):
     "ob".
     """
     def logp(self, ac, ob):
-        mean = self.policy_net(torch.from_numpy(ob))
-        ac_t = torch.from_numpy(ac)
+        mean = self.policy_net(from_numpy_dt(ob))
+        ac_t = from_numpy_dt(ac)
         dimension = float(ac.shape[1])
 
         ret = (0.5 * torch.sum(torch.pow((ac_t - mean) / self.std(), 2.0),
