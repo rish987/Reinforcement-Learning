@@ -9,8 +9,6 @@ from misc_utils import set_random_seed, Dataset
 from misc_utils import RO_EP_LEN, RO_EP_RET, RO_OB, RO_AC, RO_ADV_GL, RO_VAL_GL
 from ppo_model import PPOModel
 from rollout import get_rollout
-# TODO remove
-#torch.set_default_tensor_type('torch.DoubleTensor')
 
 # - hyperparameters -
 # -- neural network parameters --
@@ -25,7 +23,7 @@ g_num_hidden_layers = 2
 g_num_timesteps = 1e6
 # number of timesteps in a single rollout (simulated trajectory with fixed
 # parameters)
-g_timesteps_per_rollout = 2048
+g_timesteps_per_rollout = 2048 * 6
 # random seed
 g_seed = 0
 # -- 
@@ -35,11 +33,11 @@ g_clip_param = 0.2
 
 # -- SGD parameters --
 # number of training epochs per run
-g_num_epochs = 10
+g_num_epochs = 20
 # adam learning rate
 g_alpha = 3e-4
 # number of randomly selected timesteps to use in a single parameter update
-g_batch_size = 64
+g_batch_size = 1024
 # --
 
 # -- GAE parameters --
@@ -52,7 +50,7 @@ g_lambda_ = 0.95
 # - 
 
 # TODO replace with passed-in environment
-g_env_name = "InvertedPendulum-v2"
+g_env_name = "Walker2d-v2"
 
 """
 Trains a PPO agent according to given parameters and reports results.
@@ -83,6 +81,8 @@ def train(hidden_layer_size, num_hidden_layers, num_timesteps, \
     # continue training until timestep limit is reached
     while (timesteps < num_timesteps):
         # - SGD setup - 
+        model.update_cpu_networks()
+
         # get a rollout under this model for training
         rollout = rollout_gen.__next__()
         

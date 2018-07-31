@@ -13,7 +13,6 @@ def set_random_seed(seed, env=None):
     if (env != None):
         env.seed(seed)
 
-    # TODO need to set CUDA seed as well?
     torch.manual_seed(seed)
     np.random.seed(seed)
     random.seed(seed)
@@ -64,12 +63,11 @@ class Dataset(object):
 """
 Gets a tensor from a numpy array in a certain datatype.
 """
-def from_numpy_dt(arr):
-    return torch.from_numpy(arr).to(device=device, dtype=torch.float)
+def from_numpy_dt(arr, in_device=device):
+    return torch.from_numpy(arr).to(device=in_device, dtype=torch.float)
 
 """
 Gets a detached numpy array from a tensor.
 """
 def to_numpy_dt(tensor):
-    # TODO cpu() before or after detach()?
     return tensor.cpu().detach().numpy()

@@ -5,7 +5,7 @@
 # Functions relating to environment rollouts.
 from imports import *
 from misc_utils import RO_EP_LEN, RO_EP_RET, RO_OB, RO_AC, RO_ADV_GL,\
-    RO_VAL_GL, to_numpy_dt, from_numpy_dt
+    RO_VAL_GL
 
 """
 Using the given ordered rollout data, gets the Generalized Advantage Estimation 
@@ -78,7 +78,7 @@ def get_rollout(env, model, timesteps_per_rollout, gamma, lambda_):
     while True: 
         # get the value of the current observation according to the model
         # TODO get both action and value at once to enhance parallelism?
-        val = to_numpy_dt(model.eval_value(from_numpy_dt(ob)))
+        val = model.eval_value_single(ob)
 
         # just completed a rollout
         if (total_timesteps > 0) and ((total_timesteps %\
@@ -86,7 +86,6 @@ def get_rollout(env, model, timesteps_per_rollout, gamma, lambda_):
             nextval = 0.0 if new else val
             advs_gl, vals_gl = get_adv_val_gl(rews, news, vals, nextval, \
                     gamma, lambda_, timesteps_per_rollout)
-            # TODO convert all to floats?
             yield \
             {
                 RO_EP_RET: ep_rets,
@@ -101,7 +100,7 @@ def get_rollout(env, model, timesteps_per_rollout, gamma, lambda_):
 
         # get the action that should be taken at the current observation
         # according to the model
-        ac = to_numpy_dt(model.eval_policy_var(from_numpy_dt(ob)))
+        ac = model.eval_policy_var_single(ob)
 
         # timestep in this rollout
         timestep = (total_timesteps % timesteps_per_rollout)

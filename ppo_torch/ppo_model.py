@@ -4,7 +4,7 @@
 # Description:
 # Class (PPOModel) that encapsulates relevant PPO parameters and procedures.
 from imports import *
-from misc_utils import from_numpy_dt
+from misc_utils import from_numpy_dt, to_numpy_dt
 
 """
 Encapsulates relevant PPO parameters and procedures.
@@ -14,13 +14,22 @@ class PPOModel(object):
         clip_param):
         # - set up networks -
         self.policy_net = \
-            PolicyNetVar(env, num_hidden_layers, hidden_layer_size, False)
+            PolicyNetVar(env, num_hidden_layers, hidden_layer_size, False,
+            device)
+
+        self.policy_net_cpu = \
+            PolicyNetVar(env, num_hidden_layers, hidden_layer_size, False,\
+            "cpu")
 
         self.policy_net_old = \
-            PolicyNetVar(env, num_hidden_layers, hidden_layer_size, True)
+            PolicyNetVar(env, num_hidden_layers, hidden_layer_size, True,\
+            device)
 
         self.value_net = \
             GeneralNet(env, num_hidden_layers, hidden_layer_size, 1).to(device)
+
+        self.value_net_cpu = \
+            GeneralNet(env, num_hidden_layers, hidden_layer_size, 1).to("cpu")
         # - 
 
         self.clip_param = clip_param
@@ -44,22 +53,32 @@ class PPOModel(object):
             yield parameter
 
     """
-    Executes the policy function on the given observation 'ob'.
-    """
-    def eval_policy(self, ob):
-        return self.policy_net(ob, False)
-
-    """
     Executes the policy function stochastically on the given observation 'ob'.
+    Runs on CPU-based policy network to avoid wasteful overhead.
     """
-    def eval_policy_var(self, ob):
-        return self.policy_net(ob, True)
+    def eval_policy_var_single(self, ob):
+        return self.eval_single(self.policy_net_cpu, ob, True)
 
     """
     Executes the value function on the given observation 'ob'.
+    Runs on CPU-based policy network to avoid wasteful overhead.
     """
-    def eval_value(self, ob):
-        return self.value_net(ob)
+    def eval_value_single(self, ob):
+        return self.eval_single(self.value_net_cpu, ob)
+
+    """
+    Executes the specified function on the given observation 'ob'.
+    Runs on CPU to avoid wasteful overhead.
+    """
+    def eval_single(self, network, ob, *args):
+        return to_numpy_dt(network(from_numpy_dt(ob, "cpu"), *args))
+
+    """
+    Updates the CPU networks with the current parameters.
+    """
+    def update_cpu_networks(self):
+        self.policy_net_cpu.copy_params(self.policy_net)
+        self.value_net_cpu.load_state_dict(self.value_net.state_dict())
 
     """
     Updates the parameters of the model according to the Adam framework.
@@ -80,11 +99,9 @@ class PPOModel(object):
                 self.policy_net_old.logp(acs, obs))
 
         # - calculate policy loss -
-        # TODO use a method for from_numpy(X).to(torch.float)
         surr1 = ratio * from_numpy_dt(advs_gl)
         surr2 = torch.clamp(ratio, min=1.0 - self.clip_param, max=1.0 +\
-                self.clip_param) \
-            * from_numpy_dt(advs_gl)
+                self.clip_param) * from_numpy_dt(advs_gl)
         pol_loss = -torch.mean(torch.min(surr1, surr2))
         # - 
 
@@ -99,12 +116,13 @@ class PPOModel(object):
 Neural network and standard deviation for the policy function.
 """
 class PolicyNetVar(object):
-    # TODO move to(device) back?
-    def __init__(self, env, num_hidden_layers, hidden_layer_size, fixed):
+    def __init__(self, env, num_hidden_layers, hidden_layer_size, fixed, \
+        device_in):
+        self.device = device_in
         self.policy_net = GeneralNet(env, num_hidden_layers, \
-            hidden_layer_size, env.action_space.shape[0]).to(device)
+            hidden_layer_size, env.action_space.shape[0]).to(self.device)
         self.logstd = nn.Parameter(torch.zeros(env.action_space.shape[0], \
-            requires_grad=(not fixed), device=device))
+            requires_grad=(not fixed), device=self.device))
 
         if fixed:
             # prevent old policy from being considered in update
@@ -117,7 +135,7 @@ class PolicyNetVar(object):
     """
     def copy_params(self, other):
         # copy logstd parameter
-        self.logstd.data = other.logstd.clone()
+        self.logstd.data = other.logstd.clone().to(self.device)
         # copy all other parameters
         self.policy_net.load_state_dict(other.policy_net.state_dict())
 
@@ -154,10 +172,9 @@ class PolicyNetVar(object):
         ac_t = from_numpy_dt(ac)
         dimension = float(ac.shape[1])
 
-        # TODO any other rogue tensors?
         ret = (0.5 * torch.sum(torch.pow((ac_t - mean) / self.std(), 2.0),
             dim=1)) + (0.5 * torch.log(torch.tensor(2.0 * np.pi, device=\
-            device)) * torch.tensor(dimension, device=device))\
+            self.device)) * torch.tensor(dimension, device=self.device))\
             + torch.sum(self.logstd)
 
         return -ret
