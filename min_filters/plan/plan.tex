@@ -79,7 +79,7 @@
 \section*{Area of Focus}
 \begin{itemize}
     \item In their paper on Proximal Policy Optimization, Schulman et. al.
-        %\cite{ppo}
+        \cite{ppo}
         propose the clipped surrogate loss function for a fixed 
         parameter $\epsilon$:
     \begin{align*}
@@ -96,7 +96,7 @@
     advantage estimator. For simplicity, let $r_t(\theta) = r_t$. 
     $\hat{A}_t$ can be replaced with a number of other
     ``$\gamma$-just'' estimators that must satisfy certain conditions
-    %\cite{gae}
+    \cite{gae}
 	.  
     Generalizing $\hat{A}_t$ to these estimators, which will be
     denoted $\hat{G}_t$, yields:
@@ -131,6 +131,7 @@
         \caption{Expectation component, $\hat{G}_t < 0$}
     \end{figure}
     \item The paper on Trust Region Policy Optimization by Schulman et. al.
+        \cite{trpo}
         proposes a target function whose maximization guarantees monotonic
         improvement:
         \begin{align*}
@@ -203,9 +204,15 @@
     \item Removing the assumption that $\hat{G}_t > 0$, the above still holds
         only if, for all positive $\hat{G}_t$, $r_t < 1 + \epsilon$, and for
         all negative $\hat{G}_t$, $r_t > 1 - \epsilon$. 
-    \item If $r_t$ is independent of the sign of $\hat{G}_t$, this is a harder
-        condition to meet, so penalties become more possible, allowing
-        $L^{CLIP}(\theta)$ to better approximate $targ_{g}(\theta)$.
+    \item If $r_t$ is independent of the sign of $\hat{G}_t$, this is generally
+        a harder condition to meet. Experimentally, I found that, on almost
+        every batch, the number of timesteps $t$ where
+        $r_t < 1 + \epsilon$ was greater than the number of timesteps where
+        ($\hat{A}_t < 0$ and $r_t > 1 - \epsilon$) or ($\hat{A}_t > 0$ and 
+        $r_t < 1 + \epsilon$). This means that, if $\hat{G}_t$ can be
+        both positive and negative, penalties become more possible, allowing
+        $L^{CLIP}(\theta)$ to better approximate $targ_{g}(\theta)$, better
+        guaranteeing monotonic improvement.
     \item This reasoning could explain the preference for
         advantage estimators over value estimators, because the condition that 
         $\mathbb{E}_t(\hat{A}_t) = 0$ requires that advantage estimators be
@@ -224,19 +231,21 @@
         %for all $t$, $1 - \epsilon < r_t < 1 + \epsilon$.
 \end{itemize}
 
-\newpage
-\section*{Ideas and Intuitions}
-\subsection*{Sigmoid Min-Filters}
-
-\newpage
-\section*{Plan}
+%\newpage
+%\section*{Ideas and Intuitions}
+%\subsection*{Sigmoid Min-Filters}
+%
+%\newpage
+%\section*{Plan}
 
 \newpage
 \begin{thebibliography}{9}
 \bibitem{ppo} 
-\url{https://arxiv.org/abs/1707.06347}\\
+\url{https://arxiv.org/abs/1707.06347}
 \bibitem{gae} 
 \url{https://arxiv.org/abs/1506.02438}
+\bibitem{trpo} 
+\url{https://arxiv.org/abs/1502.05477}
 \end{thebibliography}
 
 \end{document}
