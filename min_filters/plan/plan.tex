@@ -1,0 +1,198 @@
+\documentclass[a4paper]{article}
+\setlength\parindent{0pt}
+
+\usepackage{pgfplots}
+\usepackage{amsthm, amsmath, amssymb, verbatim, enumerate, mathtools, algorithm}
+\usepackage{pgf}
+\usepackage[font=small, skip=0pt]{caption}
+\usepackage{hyperref}
+\def\labelitemi{--}
+\pgfplotsset{compat=newest}
+\newcommand{\eps}{0.2}
+\newcommand{\gp}{1}
+\newcommand{\gn}{-1}
+\newcommand{\gaax}[3]{
+    \begin{axis}[ 
+		title=#2,
+        title style = {font=\scriptsize},
+        xlabel=$r_t(\theta)$,
+        ymin=#1 - 1, ymax=#1 + 1,
+        xmin=0, xmax=2,
+        width=7cm,height=5cm,
+        legend pos = #3,
+        legend style = {font=\tiny},
+        xtick = {1, 1 + \eps, 1 - \eps},
+        xtick pos = bottom,
+        xticklabels = {$1$, $1 + \epsilon$, $1 - \epsilon$},
+        ytick pos = bottom,
+        ytick = {#1},
+        yticklabels = {$\hat{G}_t$}
+    ] 
+}
+\newcommand{\minproc}[2]{
+    \begin{tikzpicture}
+        [
+        declare function={
+            mfg(\x) = 
+                ((\x<=1 - \eps) * (1 - \eps) +
+                and(\x>1 - \eps, \x<=1 + \eps) * (\x) +
+                (\x>1 + \eps) * (1 + \eps)) * #1;
+            rg(\x) = \x * #1;
+        }
+        ]
+        \gaax{#1}{
+            {$r_t\hat{G}_t$ and $m(r_t)\hat{G}_t$}
+        }{#2}
+        \addplot [color=red, mark=none, samples=200] {mfg(x)}; 
+        \addplot [color=blue, mark=none, samples=200] {rg(x)}; 
+        \draw [dashed] (0,#1) -| (1,#1 - 1);
+        \legend{$r_t\hat{A}_t$, {$m(r_t)\hat{A}_t$}}
+        \end{axis}
+    \end{tikzpicture}
+    \begin{tikzpicture}
+        [
+        declare function={
+            c(\x) = 
+                min(((\x<=1 - \eps) * (1 - \eps) +
+                and(\x>1 - \eps, \x<=1 + \eps) * (\x) +
+                (\x>1 + \eps) * (1 + \eps)) * #1
+                ,\x * #1);
+        }
+        ]
+        \gaax{#1}{
+            {$\min(r_t\hat{G}_t, m(r_t)\hat{G}_t)$}
+        }{#2}
+        \addplot [color=black, mark=none, samples=200] {c(x)}; 
+        \draw [dashed] (0,#1) -| (1,#1 - 1);
+        \end{axis}
+    \end{tikzpicture}
+}
+
+\pagestyle{empty}
+
+\title{Research Plan}
+\author{\vspace{-5ex}}
+\date{\vspace{-5ex}}
+\begin{document}
+\captionsetup{labelformat=empty}
+\maketitle
+\section*{Area of Focus}
+\begin{itemize}
+    \item In their paper on Proximal Policy Optimization, Schulman et. al.
+        %\cite{ppo}
+        propose the clipped surrogate loss function for a fixed 
+        parameter $\epsilon$:
+    \begin{align*}
+        L^{CLIP}(\theta) &= \hat{\mathbb{E}}_{t}\left[ 
+        \min\left(r_t(\theta)\hat{A}_t, \text{clip}
+        (r_t(\theta), 1 - \epsilon, 1 + \epsilon)\hat{A}_t\right) \right]
+    \end{align*}
+	where 
+	$r_t(\theta) = 
+	\frac
+	{\pi_{\theta}(a_t | s_t)}
+	{\pi_{\theta_{old}} (a_t | s_t)}$
+    and $\hat{A}_t$ is the generalized
+    advantage estimator. For simplicity, let $r_t(\theta) = r_t$. 
+    $\hat{A}_t$ can be replaced with a number of other
+    ``$\gamma$-just'' estimators that must satisfy certain conditions
+    %\cite{gae}
+	.  
+    Generalizing $\hat{A}_t$ to these estimators, which will be
+    denoted $\hat{G}_t$, yields:
+    \begin{align*}
+        L^{CLIP}(\theta) &= \hat{\mathbb{E}}_{t}\left[ 
+        \min\left(r_t\hat{G}_t, \text{clip}
+        (r_t, 1 - \epsilon, 1 + \epsilon)\hat{G}_t\right) \right]
+    \end{align*}
+    \item The goal is to investigate replacements for the clipper
+        function \\ $\text{clip} (r_t, 1 - \epsilon, 1 + \epsilon)$.
+        Let us refer to these replacements as ``min-filters,'' and let $m(r_t)$
+        denote an arbitrary min-filter.
+    \item In this experimental framework, we have the loss function:
+    \begin{align*}
+        L^{m}(\theta) &= \hat{\mathbb{E}}_{t}\left[ 
+        \min\left(r_t(\theta)\hat{G}_t, m(r_t)\hat{G}_t\right) \right]
+    \end{align*}
+    \item $L^{CLIP}$ is simply an instance of this where $m(r_t) = \text{clip}
+        (r_t, 1 - \epsilon, 1 + \epsilon)$.
+
+    \newpage
+    \item
+        Illustrating minimization under $L_{CLIP}$ on individual expectation
+        components:
+    \begin{figure}[H]
+        % using advantages ensures better mix of positive and negative
+        \minproc{\gp}{north west}
+        \caption{Expectation component, $\hat{G}_t > 0$}
+    \end{figure}
+    \begin{figure}[H]
+        \minproc{\gn}{north east}
+        \caption{Expectation component, $\hat{G}_t < 0$}
+    \end{figure}
+    \item The paper on Trust Region Policy Optimization by Schulman et. al.
+        proposes a target function whose maximization guarantees monotonic
+        improvement:
+        \begin{align*}
+            targ(\theta) &= L_{\theta_{old}}(\theta) 
+            - CD_{KL}^{max}(\theta, \theta_{old})
+        \end{align*}
+        where $C$ is a fixed positive constant (see paper for specifics) and it
+        is shown that 
+        \begin{align*}
+            L_{\theta_{old}}(\theta) &= \frac{1}{1 - \gamma}
+            \mathbb{E}_{s \sim p_{\theta_{old}}, a \sim \theta_{old}}
+            \left[
+            \frac
+            {\pi_{\theta}(a | s)}
+            {\pi_{\theta_{old}} (a | s)}
+            A_{\theta_{old}}(s, a)
+            \right]
+        \end{align*}
+        where $p_{\theta_{old}}$ is the normalized discounted visitation
+        frequency distribution.
+        \item Assuming that the on-policy distribution matches the normalized
+            discounted visitation frequency distribution, we can write:
+        % TODO double-check above assumption
+        \begin{align*}
+            L_{\theta_{old}}(\theta) &= \frac{1}{1 - \gamma}
+            \mathbb{E}_{t \in (1, \dots \infty)}
+            \left[ r_{t} \hat{A}_t \right]
+        \end{align*}
+    \item By definition, any $\gamma$-just estimator can replace $\hat{A}_t$
+        because doing so only adds a constant to $targ(\theta)$ (TODO:
+        double-check that $\gamma$-just theory still applies in this 
+        situation). Therefore, we can redefine $L_{\theta_{old}}(\theta)$ as:
+        \begin{align*}
+            L_{\theta_{old}}(\theta) &= \frac{1}{1 - \gamma}
+            \mathbb{E}_{t \in (1, \dots \infty)}
+            \left[ r_{t} \hat{G}_t \right]
+        \end{align*}
+    \item This leaves us with the equivalent target function:
+    \begin{align*}
+        targ(\theta) &= \frac{1}{1 - \gamma}
+            \mathbb{E}_{t \in (1, \dots \infty)}
+            \left[ r_{t} \hat{G}_t \right] 
+        - CD_{KL}^{max}(\theta, \theta_{old})
+    \end{align*}
+    \item Consider the case where $\hat{G}_t > 0$ and $r_t < 1 + \epsilon$
+    $\forall t \in (1, \dots \infty)$. In this case, no penalty is applied and
+    the clipped loss is a strict overestimate without the same gradient:
+\end{itemize}
+
+\newpage
+\section*{Ideas and Intuitions}
+\subsection*{Sigmoid Min-Filters}
+
+\newpage
+\section*{Plan}
+
+\newpage
+\begin{thebibliography}{9}
+\bibitem{ppo} 
+\url{https://arxiv.org/abs/1707.06347}\\
+\bibitem{gae} 
+\url{https://arxiv.org/abs/1506.02438}
+\end{thebibliography}
+
+\end{document}
