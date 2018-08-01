@@ -160,24 +160,68 @@
             \left[ r_{t} \hat{A}_t \right]
         \end{align*}
     \item By definition, any $\gamma$-just estimator can replace $\hat{A}_t$
-        because doing so only adds a constant to $targ(\theta)$ (TODO:
-        double-check that $\gamma$-just theory still applies in this 
-        situation). Therefore, we can redefine $L_{\theta_{old}}(\theta)$ as:
+        because doing so only adds a constant to $targ(\theta)$.
+        %(TODO: double-check that $\gamma$-just theory still applies in this 
+        %situation). 
+        Therefore, we can redefine $L_{\theta_{old}}(\theta)$ as:
         \begin{align*}
-            L_{\theta_{old}}(\theta) &= \frac{1}{1 - \gamma}
+            L_{g, \theta_{old}}(\theta) &= \frac{1}{1 - \gamma}
             \mathbb{E}_{t \in (1, \dots \infty)}
             \left[ r_{t} \hat{G}_t \right]
         \end{align*}
-    \item This leaves us with the equivalent target function:
+    \item Plugging into the target function, multiplying by $1 - \gamma$, and
+        absorbing $1 - \gamma$ into $C$ leaves us with the
+        gradient-equivalent target function:
     \begin{align*}
-        targ(\theta) &= \frac{1}{1 - \gamma}
-            \mathbb{E}_{t \in (1, \dots \infty)}
+        targ_{g}(\theta) &= 
+            \mathbb{E}_{t}
             \left[ r_{t} \hat{G}_t \right] 
-        - CD_{KL}^{max}(\theta, \theta_{old})
+            - CD_{KL}^{max}(\theta, \theta_{old})\\
+            \nabla_{\theta} targ_{g}(\theta) &= \nabla_{\theta} targ(\theta) 
     \end{align*}
-    \item Consider the case where $\hat{G}_t > 0$ and $r_t < 1 + \epsilon$
-    $\forall t \in (1, \dots \infty)$. In this case, no penalty is applied and
-    the clipped loss is a strict overestimate without the same gradient:
+    \item Consider the case where $\forall t \in (1, \dots \infty)$, $\hat{G}_t
+        > 0$ and $r_t < 1 + \epsilon$ and let $\theta \ne \theta_{old}$. In
+        this case, no penalty is applied and the clipped loss is a strict
+        overestimate without the same gradient:
+    \begin{align*}
+        L^{CLIP}(\theta) &= \hat{\mathbb{E}}_{t}\left[ 
+        \min\left(r_t\hat{G}_t, \text{clip}
+        (r_t, 1 - \epsilon, 1 + \epsilon)\hat{G}_t\right) \right]\\
+        &= \hat{\mathbb{E}}_{t}\left[ 
+        r_t\hat{G}_t\right]\\
+        &\ge \mathbb{E}_{t}
+            \left[ r_{t} \hat{G}_t \right] 
+            - CD_{KL}^{max}(\theta, \theta_{old})\\
+        &= targ_{g}(\theta)\\
+        \nabla_{\theta}L^{CLIP}(\theta) &= \nabla_{\theta}
+        \hat{\mathbb{E}}_{t}\left[r_t\hat{G}_t\right]\\
+        &\ne \nabla_{\theta}\mathbb{E}_{t}
+            \left[ r_{t} \hat{G}_t \right] 
+            - C\nabla_{\theta}D_{KL}^{max}(\theta, \theta_{old})\\
+        &= \nabla_{\theta}targ_{g}(\theta)
+    \end{align*}
+    \item Removing the assumption that $\hat{G}_t > 0$, the above still holds
+        only if, for all positive $\hat{G}_t$, $r_t < 1 + \epsilon$, and for
+        all negative $\hat{G}_t$, $r_t > 1 - \epsilon$. 
+    \item If $r_t$ is independent of the sign of $\hat{G}_t$, this is a harder
+        condition to meet, so penalties become more possible, allowing
+        $L^{CLIP}(\theta)$ to better approximate $targ_{g}(\theta)$.
+    \item This reasoning could explain the preference for
+        advantage estimators over value estimators, because the condition that 
+        $\mathbb{E}_t(\hat{A}_t) = 0$ requires that advantage estimators be
+        negative half the time, while value functions are typically always
+        positive or always negative.
+    \item Research question: In some cases, it is simpler to implement a value
+        estimator than an advantage estimator. Can we design a min-filter that
+        specifically addresses the above concerns to make it more feasable to
+        use a value estimator in Proximal Policy Optimization?
+        
+        %Therefore, if it tends
+        %to be the case that $r_t < 1$ independent of the sign of $\hat{G}_t$,
+        %and $\mathbb{E}_t(\hat{G}_t) = 0$, the condition is less likely to be
+        %met than if we required $\hat{G}_t > 0$.
+        % TODO might not need. This is guaranteed if,
+        %for all $t$, $1 - \epsilon < r_t < 1 + \epsilon$.
 \end{itemize}
 
 \newpage
