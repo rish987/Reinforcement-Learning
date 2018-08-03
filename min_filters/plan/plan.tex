@@ -231,71 +231,88 @@
         %for all $t$, $1 - \epsilon < r_t < 1 + \epsilon$.
 \end{itemize}
 \newpage
+\section*{$L^{CLIP}$ Penalty Differences for Different Estimate Models}
 \begin{itemize}
-    % TODO put hats on Gs
-    \item Consider the set of expectation-component parameters $((r_1, G_1),
-        (r_2, G_2), \dots (r_T, G_T))$, where all $r$ and $G$ are
-        uncorrelated. Let $\epsilon = 0.2$.
-    \item Let the probabilities $p(G_t > 0)$, $p(G_t < 0) = 0.5$, 
-            $p(r_t > 1.2)$, $p(r_t < 0.8)$ be fixed.
-    \item A particular timestep $t$ will be penalized in either of two
-        cases:
+    % TODO put hats on \hat{G}s
+    \item Consider the set of expectation-component parameters $((r_1, \hat{G}_1),
+        (r_2, \hat{G}_2), \dots (r_T, \hat{G}_T))$, where all $r$ and $\hat{G}$
+        are uncorrelated.
+    \item Under $L^{CLIP}$, a particular timestep $t$ will be penalized in
+        either of two cases:
     \begin{itemize}
-        \item $G_t$ is positive and $r_t > 1.2$.
-        \item $G_t$ is negative and $r_t < 0.8$.
+        \item $\hat{G}_t$ is positive and $r_t > 1 + \epsilon$.
+        \item $\hat{G}_t$ is negative and $r_t < 1 - \epsilon$.
     \end{itemize}
-    \item Therefore, by the assumption of independence of $G_t$ and $r_t$, we
-        have the expected number of penalized timesteps:\\
-        $(p(G_t > 0)p(r_t > 1.2) + p(G_t < 0)p(r_t < 0.8))T$.
-    \item Let $G_{1, t}$ and $G_{2, t}$ be two alterate estimators. To
-        understand differences in the expected number of penalized timesteps as
-        we modify the sign of $G$, define the ratio:
+    \item Therefore, by the assumption of independence of $\hat{G}_t$ and
+        $r_t$, we have the expected number of penalized timesteps:\\
+        $(p(\hat{G}_t > 0)p(r_t > 1 + \epsilon) + p(\hat{G}_t < 0)p(r_t < 1 -
+        \epsilon))T$.
+    \item Let $\hat{G}_{1, t}$ and $\hat{G}_{2, t}$ be two alterate estimators.
+        To understand differences in the expected number of penalized timesteps
+        as we modify the sign of $\hat{G}$, define the ratio:
     \begin{align*}
         r_{diff} &= 
-        \frac{(p(G_{1, t} > 0)p(r_t > 1.2) + p(G_{1, t} < 0)p(r_t < 0.8))T}
-            {(p(G_{2, t} > 0)p(r_t > 1.2) + p(G_{2, t} < 0)p(r_t < 0.8))T}\\
-        &=\frac{p(G_{1, t} > 0)p(r_t > 1.2) + p(G_{1, t} < 0)p(r_t < 0.8)}
-            {p(G_{2, t} > 0)p(r_t > 1.2) + p(G_{2, t} < 0)p(r_t < 0.8)}
+        \frac
+        {(p(\hat{G}_{1, t} > 0)p(r_t > 1 + \epsilon) + p(\hat{G}_{1, t} <
+        0)p(r_t < 1 - \epsilon))T}
+        {(p(\hat{G}_{2, t} > 0)p(r_t > 1 + \epsilon) + p(\hat{G}_{2, t} <
+        0)p(r_t < 1 - \epsilon))T}\\
+        &=
+        \frac
+        {p(\hat{G}_{1, t} > 0)p(r_t > 1 + \epsilon) + p(\hat{G}_{1, t} <
+        0)p(r_t < 1 - \epsilon)}
+        {p(\hat{G}_{2, t} > 0)p(r_t > 1 + \epsilon) + p(\hat{G}_{2, t} <
+        0)p(r_t < 1 - \epsilon)}
     \end{align*}
-    \item If $p(r_t > 1.2) = p(r_t < 0.8)$, this ratio degenerates to
-        $1$ regardless of the sign distributions of $G_1$ and $G_2$.
+    \item If $p(r_t > 1 + \epsilon) = p(r_t < 1 - \epsilon)$, this ratio
+        degenerates to $1$ regardless of the sign distributions of $\hat{G}_1$
+        and $\hat{G}_2$.
     \item Consider the example where 
-        $p(G_{1, t} > 0) = p(G_{1, t} < 0) = 0.5$
+        $p(\hat{G}_{1, t} > 0) = p(\hat{G}_{1, t} < 0) = 0.5$
         and
-        $p(G_{2, t} > 0) = 1$, $p(G_{2, t} < 0) = 0$. Finding the conditions
-        under which $r_{diff} > 1$:
+        $p(\hat{G}_{2, t} > 0) = 1$, $p(\hat{G}_{2, t} < 0) = 0$. Finding the
+        conditions under which $r_{diff} > 1$:
         \begin{align*}
             r_{diff} &>  1\\
-            \frac{0.5(p(r_t > 1.2) + p(r_t < 0.8))}
-                {p(r_t > 1.2)}
+            \frac{0.5(p(r_t > 1 + \epsilon) + p(r_t < 1 - \epsilon))}
+                {p(r_t > 1 + \epsilon)}
             &> 1\\
-            \frac{p(r_t > 1.2) + p(r_t < 0.8)}
-                {p(r_t > 1.2)}
+            \frac{p(r_t > 1 + \epsilon) + p(r_t < 1 - \epsilon)}
+                {p(r_t > 1 + \epsilon)}
             &> 2\\
-            p(r_t > 1.2) + p(r_t < 0.8)
-            &> 2p(r_t > 1.2)\\
-            p(r_t < 0.8)
-            &> p(r_t > 1.2)
+            p(r_t > 1 + \epsilon) + p(r_t < 1 - \epsilon)
+            &> 2p(r_t > 1 + \epsilon)\\
+            p(r_t < 1 - \epsilon)
+            &> p(r_t > 1 + \epsilon)
         \end{align*}
-    \item Similarly, we have that if $p(G_{2, t} > 0) = 0$, 
-        $p(G_{2, t} < 0) = 1$, we must have that $p(r_t < 0.8) < p(r_t > 1.2)$
-    \item Is it possible for these probabilities to be lopsided in this way?
-        Consider the two policies parameterized by $\pi_1$ and
-        $\pi_2$, in a state space of the single state $s$. Can we have that 
-        $p(\pi_1(s, a_t) < \pi_2(s, a_t)) \ne 0.5$?
-    \item All this requires is that, in choosing a state at random based on the
-        on-policy distribution (2), we expect to find that the sum of the
-        2-probabilities of actions where the probability under 2 is greater
-        than 1 is > 0.5.
-    \item WTS: $p(r_t < 0) > p(r_t > 0)$, i.e., $p(r_t < 0) > 0.5$.
-    \item $p(r_t < 0) = \sum_{s}p(s | \pi_{old})
-        \sum_{a: \pi(a | s) < \pi_{old}(a | s)}\pi_{old}(a | s)$.
-    \item Moving to a continuous action space, and considering gaussian
-        policies with fixed standard deviations, we know that, at any
-        particular state $s$, $\int_{a: \pi(a | s) < \pi_{old}(a |
-        s)}\pi_{old}(a | s) \ge 0.5$.
-    \item Therefore, in this situation, the above must be true.
-    \end{itemize}
+    \item Consider a continuous action space and gaussian
+        policies with trainable but state-independent standard deviations.
+    \item In general, on a particular state $s$, the standard deviation encoded
+        by $\theta$ will decrease as the agent becomes more certain of its
+        actions, and the mean will get further from the mean encoded by
+        $\theta_{old}$. Visualizing the overlaid gaussians, both of these
+        actions will make it more likely that the above condition is true.
+    \item Therefore, as training progresses in a single iteration, we expect
+        that the $\hat{G}_1$ estimate will begin to induce penalties on more
+        timesteps than the $\hat{G}_2$ estimate.
+    \item Following similar logic as above, we have that if
+        $p(\hat{G}_{2, t} > 0) = 0$, $p(\hat{G}_{2, t} < 0) = 1$, the condition
+        $r_{diff} > 1$ requires that $p(r_t < 1 - \epsilon) < p(r_t > 1 +
+        \epsilon)$.  However, because we have just reasoned that the opposite
+        relation tends to be true as an iteration progresses, it must be be the
+        case that $r_{diff} < 1$ - that is, using such an estimator results in
+        more penalized timesteps.
+    \item Testing this theory empirically on the InvertedPendulum-v2
+        environment with a standard PPO agent and an advatage estimate
+        $\hat{G}_t$, I observed that, in a single
+        iteration, the number of $(\hat{G}_t, r_t)$ where 
+        ($\hat{G}_t > 0 $ and $r_t > 1 + \epsilon$)
+        or
+        ($\hat{G}_t < 0 $ and $r_t < 1 - \epsilon$) became consitently greater
+        than the number of $r_t$ where $r_t > 1 + \epsilon$, and consistently
+        less than the number of $r_t$ where $r_t < 1 - \epsilon$. This is in
+        agreement with the above theoretical results.
+\end{itemize}
 
 %\newpage
 %\section*{Ideas and Intuitions}
