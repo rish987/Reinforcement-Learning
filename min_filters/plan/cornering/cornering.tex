@@ -1,0 +1,144 @@
+\documentclass[tikz]{standalone}
+\usepackage{tikz}
+\newcommand{\drawgaussian}[3]
+{
+    \draw[#1!50] plot[smooth,domain=\lowx:\highx,samples=50] (\x * \xscale,
+    {
+        (1/(#2 * sqrt(2 * pi))) * e ^ ((-1 / 2) * (((\x - #3)/#2) ^ 2)) *
+        \yscale
+    });
+}
+\newcommand{\evalgaussian}[3]
+{
+    \pgfmathsetmacro{\evaledgaussian}{
+    (1/(#1 * sqrt(2 * pi))) * e ^ ((-1 / 2) * (((#3 - #2)/#1) ^ 2))
+    }
+}
+\pgfkeys{/pgf/number format/.cd,fixed,precision=1}
+\newcommand{\ytick}[1]
+{
+    \draw (0.5pt,#1 * \yscale) -- (-0.5pt,#1 * \yscale) 
+        node[left, scale=\nodescale] 
+		{\pgfmathprintnumber[precision=1]{#1}};
+}
+\newcommand{\xtick}[3]
+{
+    \ifnum #3 = 1
+        \pgfmathsetmacro{\precision}{0}
+    \else
+        \pgfmathsetmacro{\precision}{2}
+    \fi
+    \draw [#2] (#1 * \xscale,0.5pt) -- (#1 * \xscale,-0.5pt) 
+      node[below, scale=\nodescale]
+      {\pgfmathprintnumber[precision=\precision]{#1}};
+}
+\newcommand{\getvalid}[1]
+{
+    \pgfmathsetmacro{\C}{
+        ((\meanold ^ 2) * (\std ^ 2)) 
+        - ((\mean ^ 2) * (\stdold ^ 2)) 
+        - (2 * (\std ^ 2) * (\stdold ^ 2) * ln((\std / \stdold)
+        * (1 + (#1 * \eps))))}
+
+    \pgfmathsetmacro{\sqrtterm}{(\B ^ 2) - (4 * \A * \C)}
+
+    % determine if limits can be calculated here
+    \ifdim \A pt = 0.0pt
+        \pgfmathsetmacro{\valid}{0}
+    \else
+        \ifdim \sqrtterm pt > 0.0pt
+            \pgfmathsetmacro{\valid}{1}
+        \else
+            \pgfmathsetmacro{\valid}{0}
+        \fi
+    \fi
+
+}
+\newcommand{\dashedtooldgauss}[1]
+{
+    \xtick{#1}{gray}{0}
+    \evalgaussian{\stdold}{\meanold}{#1}
+    \draw[gray, dashed] (#1 * \xscale,0) -- (#1 *
+    \xscale,\evaledgaussian * \yscale);
+}
+\pgfmathsetmacro{\eps}{0.2}
+
+\pgfmathsetmacro{\meanold}{0}
+\pgfmathsetmacro{\stdold}{1}
+\pgfmathsetmacro{\stddecmult}{0.09}
+\pgfmathsetmacro{\meandiffmult}{0.1}
+
+\pgfmathsetmacro{\lowx}{-3}
+\pgfmathsetmacro{\nextlowx}{\lowx + 1}
+\pgfmathsetmacro{\highx}{3}
+\pgfmathsetmacro{\xscale}{1}
+\pgfmathsetmacro{\lowy}{0}
+
+\pgfmathsetmacro{\yinc}{0.5}
+\pgfmathsetmacro{\nextlowy}{\lowy + \yinc}
+\pgfmathsetmacro{\nextnextlowy}{\lowy + (2 * \yinc)}
+\pgfmathsetmacro{\highy}{1.5}
+\pgfmathsetmacro{\yscale}{3}
+
+\pgfmathsetmacro{\nodescale}{0.5}
+
+\begin{document}
+\foreach \mult in {0,1,...,8}
+{
+    % get new mean
+    \pgfmathsetmacro{\meandiff}{\mult * \meandiffmult}
+    \pgfmathsetmacro{\mean}{\meanold + \meandiff}
+
+    % get new standard deviation
+    \pgfmathsetmacro{\stddec}{\mult * \stddecmult}
+    \pgfmathsetmacro{\std}{\stdold - \stddec}
+
+    % calculate edges
+    \pgfmathsetmacro{\A}{(\std ^ 2) - (\stdold ^ 2)}
+    \pgfmathsetmacro{\B}{
+        2 * 
+        ((\mean * (\stdold ^ 2)) - (\meanold * (\std ^ 2)))
+    }
+    
+    \getvalid{1}
+
+    \ifnum \valid = 1
+        \pgfmathsetmacro{\validup}{1}
+        \pgfmathsetmacro{\higherup}{((-1 * \B) - sqrt(\sqrtterm)) / (2 * \A)}
+        \pgfmathsetmacro{\lowerup}{((-1 * \B) + sqrt(\sqrtterm)) / (2 * \A)}
+    \else
+        \pgfmathsetmacro{\validup}{0}
+    \fi
+
+    \getvalid{-1}
+    
+    \ifnum \valid = 1
+        \pgfmathsetmacro{\validdown}{1}
+        \pgfmathsetmacro{\higherdown}{((-1 * \B) - sqrt(\sqrtterm)) / (2 * \A)}
+        \pgfmathsetmacro{\lowerdown}{((-1 * \B) + sqrt(\sqrtterm)) / (2 * \A)}
+    \else
+        \pgfmathsetmacro{\validdown}{0}
+    \fi
+
+    \begin{tikzpicture}
+        \drawgaussian{black}{\stdold}{\meanold}
+        \drawgaussian{blue}{\std}{\mean}
+
+        % draw axes and ticks
+        \draw (\lowx * \xscale,0) -- (\highx * \xscale,0);
+        \foreach \x in {\lowx, \nextlowx, ..., \highx} {\xtick{\x}{black}{1}}
+        \draw (0, \lowy * \yscale,0) -- (0, \highy * \yscale);
+        \foreach \y in {\nextlowy, \nextnextlowy, ..., \highy} {\ytick{\y}}
+        
+        \ifnum \validup = 1
+            \ifnum \validdown = 1
+                \dashedtooldgauss{\lowerup}
+                \dashedtooldgauss{\higherup}
+                \dashedtooldgauss{\lowerdown}
+                \dashedtooldgauss{\higherdown}
+            \fi
+        \fi
+
+    \end{tikzpicture}
+}
+\end{document}
