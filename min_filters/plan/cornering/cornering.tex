@@ -1,52 +1,10 @@
-\documentclass[tikz]{standalone}
+\documentclass[tikz, border=1pt]{standalone}
+\usepackage{pgfplots, pgfplotstable}
+\pgfplotsset{compat=newest}
 \usepackage{tikz}
-\newcommand{\gaussianplot}[4]
-{
-    plot[smooth,domain=#3:#4,samples=50] (\x * \xscale,
-    {
-        (1/(#1 * sqrt(2 * pi))) * e ^ ((-1 / 2) * (((\x - #2)/#1) ^ 2)) *
-        \yscale
-    })
-}
-\newcommand{\drawgaussian}[5]
-{
-    \draw[#1!50] \gaussianplot{#2}{#3}{#4}{#5};
-}
-\newcommand{\fillgaussian}[5]
-{
-    \fill[black!#1, opacity=0.5] (#4, 0) -- 
-    plot[domain=#4:#5,samples=100] (\x * \xscale,
-    {
-        (1/(#2 * sqrt(2 * pi))) * e ^ ((-1 / 2) * (((\x - #3)/#2) ^ 2)) *
-        \yscale
-    })
-    \gaussianplot{#2}{#3}{#4}{#5} 
-    -- (#5, 0) -- (#4, 0);
-}
-\newcommand{\evalgaussian}[3]
-{
-    \pgfmathsetmacro{\evaledgaussian}{
-    (1/(#1 * sqrt(2 * pi))) * e ^ ((-1 / 2) * (((#3 - #2)/#1) ^ 2))
-    }
-}
-\pgfkeys{/pgf/number format/.cd,fixed,precision=1}
-\newcommand{\ytick}[1]
-{
-    \draw (0.5pt,#1 * \yscale) -- (-0.5pt,#1 * \yscale) 
-        node[left, scale=\nodescale] 
-		{\pgfmathprintnumber[precision=1]{#1}};
-}
-\newcommand{\xtick}[3]
-{
-    \ifnum #3 = 1
-        \pgfmathsetmacro{\precision}{0}
-    \else
-        \pgfmathsetmacro{\precision}{2}
-    \fi
-    \draw [#2] (#1 * \xscale,0.5pt) -- (#1 * \xscale,-0.5pt) 
-      node[below, scale=\nodescale]
-      {\pgfmathprintnumber[precision=\precision]{#1}};
-}
+\tikzset{declare function={gaussian(\s,\m)=(1/(\s * sqrt(2 * pi))) * exp((-1 
+/ 2) * (((x - \m)/\s) ^ 2));}}
+
 \newcommand{\getvalid}[1]
 {
     \pgfmathsetmacro{\C}{
@@ -69,36 +27,54 @@
     \fi
 
 }
-\newcommand{\dashedtooldgauss}[1]
+\newcommand{\linetooldgaus}[1]
 {
-    \xtick{#1}{gray}{0}
-    \evalgaussian{\stdold}{\meanold}{#1}
-    \draw[gray, dashed] (#1 * \xscale,0) -- (#1 *
-    \xscale,\evaledgaussian * \yscale);
+    \addplot[dashed] coordinates {(#1, 0) (#1, {gaussian(\stdold, \meanold)})};
 }
+\newcommand{\filloldgauss}[3]
+{
+    \addplot [draw=none, fill=#3, domain=#1:#2, opacity=0.5] 
+        {gaussian(\stdold, \meanold)} \closedcycle;
+}
+
 \pgfmathsetmacro{\eps}{0.2}
 
 \pgfmathsetmacro{\meanold}{0}
 \pgfmathsetmacro{\stdold}{1}
-\pgfmathsetmacro{\stddecmult}{0.09}
-\pgfmathsetmacro{\meandiffmult}{0.1}
-
+\pgfmathsetmacro{\stddecmult}{0.03}
+\pgfmathsetmacro{\meandiffmult}{0.05}
 \pgfmathsetmacro{\lowx}{-3}
-\pgfmathsetmacro{\nextlowx}{\lowx + 1}
 \pgfmathsetmacro{\highx}{3}
-\pgfmathsetmacro{\xscale}{1}
-\pgfmathsetmacro{\lowy}{0}
+\pgfmathsetmacro{\xrange}{\highx - \lowx}
+\pgfmathsetmacro{\numsamples}{50}
 
-\pgfmathsetmacro{\yinc}{0.5}
-\pgfmathsetmacro{\nextlowy}{\lowy + \yinc}
-\pgfmathsetmacro{\nextnextlowy}{\lowy + (2 * \yinc)}
-\pgfmathsetmacro{\highy}{1.5}
-\pgfmathsetmacro{\yscale}{3}
+\newcommand{\probdown}{}
+\newcommand{\probup}{}
 
-\pgfmathsetmacro{\nodescale}{0.5}
+\newcommand{\newinttable}[2]
+{
+\pgfplotstablenew[
+    create on use/x/.style={
+        create col/expr={((\pgfplotstablerow/\numsamples) * \xrange) + \lowx}
+    },
+    create on use/y/.style={
+        create col/expr={
+            ((1/(\stdold * sqrt(2 * pi))) * exp((-1 / 2) 
+            * (((\thisrow{x} - \meanold)/\stdold) ^ 2))))
+            * (((\thisrow{x} > #1) && (\thisrow{x} < #2))?1:0)
+        }
+    },
+    create on use/int/.style={
+        create col/expr={\pgfmathaccuma+(\thisrow{y}+\prevrow{y})/2*(\thisrow{x}-\prevrow{x})}
+    },
+    columns={x,y,int}
+]
+{\numsamples}
+\inttable
+}
 
 \begin{document}
-\foreach \mult in {0,1,...,8}
+\foreach \mult in {0,1,...,20}
 {
     % get new mean
     \pgfmathsetmacro{\meandiff}{\mult * \meandiffmult}
@@ -135,28 +111,85 @@
         \pgfmathsetmacro{\validdown}{0}
     \fi
 
+    \newcommand{\extraticks}{}
+    \ifnum \validdown = 1
+        \ifnum \validup = 1
+            \renewcommand{\extraticks}{\lowerdown, \lowerup, 
+                \higherup, \higherdown}
+        \fi
+    \fi
+
     \begin{tikzpicture}
-%        \drawgaussian{black}{\stdold}{\meanold}{\lowx}{\highx}
-%        \drawgaussian{blue}{\std}{\mean}{\lowx}{\highx}
+        \begin{axis}
+            [ 
+                axis x line=center,
+                axis y line=center,
+                every extra x tick/.style={xticklabel 
+                    style={color=gray}, tick style=gray},
+                extra x ticks = \extraticks,
+                extra x tick labels = {},
+                xlabel=$a$,
+                ymin=0, ymax=1.5,
+                legend pos = north west,
+                xmin=\lowx, xmax=\highx
+            ]
+            \addplot [color=black, mark=none, samples=\numsamples] 
+                {gaussian(\stdold, \meanold)}; 
+            \addplot [color=blue, mark=none, samples=\numsamples]
+                {gaussian(\std, \mean)}; 
+            \legend{$\pi_{\theta_{old}}(s_t)$, $\pi_{\theta}(s_t)$, 
+                $r_t > 1 + \epsilon$, $r_t < 1 - \epsilon$}
+            \addlegendimage{only marks, mark=square*,color=black!50}
+            \addlegendimage{only marks, mark=square*,color=black!25}
+%            \addplot [color=red, mark=none, samples=50] {
+%                gaussian(\std, \mean) / gaussian(\stdold, \meanold)}; 
+%            \addplot [color=green, mark=none, samples=\numsamples]
+%                {rect(1, 2)}; 
+            \ifnum \validdown = 1
+                \ifnum \validup = 1
+                    \linetooldgaus{\lowerdown}
+                    \linetooldgaus{\lowerup}
+                    \linetooldgaus{\higherup}
+                    \linetooldgaus{\higherdown}
+                    \filloldgauss{\lowx}{\lowerdown}{black!25}
+                    \filloldgauss{\lowerup}{\higherup}{black!50}
+                    \filloldgauss{\higherdown}{\highx}{black!25}
+                \fi
+            \fi
+        \end{axis}
+        
+        \pgfmathsetmacro{\pup}{0}
+        \pgfmathsetmacro{\pdown}{0}
+        \ifnum \validdown = 1
+            \ifnum \validup = 1
+                \newinttable{\lowx}{\lowerdown}
+                \pgfplotstablegetelem{49}{int}\of\inttable
+                \pgfmathsetmacro{\lu}{\pgfplotsretval}
 
-%        % draw axes and ticks
-%        \draw (\lowx * \xscale,0) -- (\highx * \xscale,0);
-%        \foreach \x in {\lowx, \nextlowx, ..., \highx} {\xtick{\x}{black}{1}}
-%        \draw (0, \lowy * \yscale,0) -- (0, \highy * \yscale);
-%        \foreach \y in {\nextlowy, \nextnextlowy, ..., \highy} {\ytick{\y}}
-%        
-%        \ifnum \validup = 1
-%            \ifnum \validdown = 1
-%                \dashedtooldgauss{\lowerup}
-%                \dashedtooldgauss{\higherup}
-%                \dashedtooldgauss{\lowerdown}
-%                \dashedtooldgauss{\higherdown}
-%                \fillgaussian{50}{\stdold}{\meanold}{\lowerup}{\higherup}
-%                \fillgaussian{20}{\stdold}{\meanold}{-2}{\lowerdown}
-%                \fillgaussian{20}{\stdold}{\meanold}{-3}{-2}
-%            \fi
-%        \fi
+                \newinttable{\lowerup}{\higherup}
+                \pgfplotstablegetelem{49}{int}\of\inttable
+                \pgfmathsetmacro{\pup}{\pgfplotsretval}
 
+                \newinttable{\higherdown}{\highx}
+                \pgfplotstablegetelem{49}{int}\of\inttable
+                \pgfmathsetmacro{\lh}{\pgfplotsretval}
+
+                \pgfmathsetmacro{\pdown}{\lh + \lu}
+            \fi
+        \fi
+
+        \begin{axis}[
+          ybar,
+          enlargelimits=0.50,
+          ymin=0, ymax=1,
+          symbolic x coords={$p(r_t < 1 - \epsilon)$,$p(r_t > 1 + \epsilon)$},
+          xtick=data,
+          nodes near coords, 
+          nodes near coords align={vertical},
+          at={(0, -240)}
+          ]
+          \addplot coordinates {($p(r_t < 1 - \epsilon)$,\pdown) ($p(r_t > 1 + \epsilon)$,\pup)};
+        \end{axis}
     \end{tikzpicture}
 }
 \end{document}
