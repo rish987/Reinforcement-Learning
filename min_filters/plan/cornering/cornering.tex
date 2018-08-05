@@ -41,12 +41,12 @@
 
 \pgfmathsetmacro{\meanold}{0}
 \pgfmathsetmacro{\stdold}{1}
-\pgfmathsetmacro{\stddecmult}{0.03}
-\pgfmathsetmacro{\meandiffmult}{0.05}
+\pgfmathsetmacro{\stddecmult}{0.01}
+\pgfmathsetmacro{\meandiffmult}{0.02}
 \pgfmathsetmacro{\lowx}{-3}
 \pgfmathsetmacro{\highx}{3}
 \pgfmathsetmacro{\xrange}{\highx - \lowx}
-\pgfmathsetmacro{\numsamples}{50}
+\pgfmathsetmacro{\numsamples}{100}
 
 \newcommand{\probdown}{}
 \newcommand{\probup}{}
@@ -74,7 +74,7 @@
 }
 
 \begin{document}
-\foreach \mult in {0,1,...,20}
+\foreach \mult in {0,1,...,65}
 {
     % get new mean
     \pgfmathsetmacro{\meandiff}{\mult * \meandiffmult}
@@ -162,16 +162,17 @@
         \pgfmathsetmacro{\pdown}{0}
         \ifnum \validdown = 1
             \ifnum \validup = 1
+                \pgfmathsetmacro{\numsamplessub}{\numsamples - 1}
                 \newinttable{\lowx}{\lowerdown}
-                \pgfplotstablegetelem{49}{int}\of\inttable
+                \pgfplotstablegetelem{\numsamplessub}{int}\of\inttable
                 \pgfmathsetmacro{\lu}{\pgfplotsretval}
 
                 \newinttable{\lowerup}{\higherup}
-                \pgfplotstablegetelem{49}{int}\of\inttable
+                \pgfplotstablegetelem{\numsamplessub}{int}\of\inttable
                 \pgfmathsetmacro{\pup}{\pgfplotsretval}
 
                 \newinttable{\higherdown}{\highx}
-                \pgfplotstablegetelem{49}{int}\of\inttable
+                \pgfplotstablegetelem{\numsamplessub}{int}\of\inttable
                 \pgfmathsetmacro{\lh}{\pgfplotsretval}
 
                 \pgfmathsetmacro{\pdown}{\lh + \lu}
