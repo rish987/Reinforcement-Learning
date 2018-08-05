@@ -86,10 +86,13 @@ class PPOModel(object):
     def adam_update(self, obs, acs, advs_gl, vals_gl):
         # clear gradients
         self.optimizer.zero_grad()
-        pol_loss, val_loss = self.loss(obs, acs, advs_gl, vals_gl)
+        pol_loss, val_loss, num_upclips, num_downclips = \
+            self.loss(obs, acs, advs_gl, vals_gl)
         loss = pol_loss + val_loss
         loss.backward()
         self.optimizer.step()
+
+        return num_upclips, num_downclips
         
     """
     Calculates the total loss with the given batch data.
@@ -97,6 +100,9 @@ class PPOModel(object):
     def loss(self, obs, acs, advs_gl, vals_gl):
         ratio = torch.exp(self.policy_net.logp(acs, obs) - \
                 self.policy_net_old.logp(acs, obs))
+        
+        num_upclips = torch.sum(ratio > (1 + self.clip_param)).item()
+        num_downclips = torch.sum(ratio < (1 - self.clip_param)).item()
 
         # - calculate policy loss -
         surr1 = ratio * from_numpy_dt(advs_gl)
@@ -110,7 +116,7 @@ class PPOModel(object):
                 - from_numpy_dt(vals_gl[:, None]), 2.0))
         #print("pol_loss: {0} \t val_loss: {1}".format(pol_loss, val_loss))
 
-        return pol_loss, val_loss
+        return pol_loss, val_loss, num_upclips, num_downclips
 
 """
 Neural network and standard deviation for the policy function.

@@ -4,6 +4,16 @@
 # Description:
 # Miscellaneous utility functions.
 from imports import *
+# - graphing parameters -
+# default graph output file
+GRAPH_OUT = "graph_out.pgf"
+
+# -- graph data keys --
+GD_STD = "std"
+GD_AVG_NUM_UPCLIPS = "avg_num_upclips"
+GD_AVG_NUM_DOWNCLIPS = "avg_num_downclips"
+# -- 
+# - 
 
 """
 Sets the random seed for all relevant libraries, including a potential
