@@ -1,0 +1,158 @@
+\documentclass[tikz, border=1pt]{standalone}
+\usepackage{pgfplots, pgfplotstable}
+\pgfplotsset{compat=newest}
+\usepackage{tikz}
+\tikzset{declare function={gaussian(\s,\m)=(1/(\s * sqrt(2 * pi))) * exp((-1 
+/ 2) * (((x - \m)/\s) ^ 2));}}
+\tikzset{declare function={
+        ratioclippedmin= min((gaussian(\std, \mean) / gaussian(\std,
+\meanold)), 1 + \eps);}} 
+\tikzset{declare function={
+        ratioclippedmax= max((gaussian(\std, \mean) / gaussian(\std,
+\meanold)), 1 - \eps);}} 
+\newcommand{\linetooldgaus}[1]
+{
+    \addplot[dashed] coordinates {(#1, 0) (#1, {gaussian(\std, \meanold)})};
+}
+\pgfmathsetmacro{\eps}{0.2}
+
+\pgfmathsetmacro{\meanold}{0}
+\pgfmathsetmacro{\std}{1}
+\pgfmathsetmacro{\meandiffmult}{0.02}
+\pgfmathsetmacro{\lowx}{-3}
+\pgfmathsetmacro{\highx}{3}
+\pgfmathsetmacro{\xrange}{\highx - \lowx}
+\pgfmathsetmacro{\numsamples}{100}
+\pgfmathsetmacro{\numsamplessub}{\numsamples - 1}
+
+\newcommand{\probdown}{}
+\newcommand{\probup}{}
+\newcommand{\upcolor}{black!90}
+\newcommand{\downcolor}{black!40}
+
+\newcommand{\newinttable}[0]
+{
+\pgfplotstablenew[
+    create on use/x/.style={
+        create col/expr={((\pgfplotstablerow/\numsamples) * \xrange) + \lowx}
+    },
+    create on use/up/.style={
+        create col/expr={
+            ((1/(\std * sqrt(2 * pi))) * exp((-1 / 2) 
+            * (((\thisrow{x} - \meanold)/\std) ^ 2)))
+            *
+            min(
+            (
+            ((1/(\std * sqrt(2 * pi))) * exp((-1 / 2) 
+            * (((\thisrow{x} - \mean)/\std) ^ 2)))
+            / 
+            ((1/(\std * sqrt(2 * pi))) * exp((-1 / 2) 
+            * (((\thisrow{x} - \meanold)/\std) ^ 2))))
+            ,
+            1 + \eps)
+        }
+    },
+    create on use/down/.style={
+        create col/expr={
+            ((1/(\std * sqrt(2 * pi))) * exp((-1 / 2) 
+            * (((\thisrow{x} - \meanold)/\std) ^ 2)))
+            *
+            max(
+            (
+            ((1/(\std * sqrt(2 * pi))) * exp((-1 / 2) 
+            * (((\thisrow{x} - \mean)/\std) ^ 2)))
+            / 
+            ((1/(\std * sqrt(2 * pi))) * exp((-1 / 2) 
+            * (((\thisrow{x} - \meanold)/\std) ^ 2))))
+            ,
+            1 - \eps)
+        }
+    },
+    create on use/intup/.style={
+        create col/expr={\pgfmathaccuma+(\thisrow{up}+\prevrow{up})/2*(\thisrow{x}-\prevrow{x})}
+    },
+    create on use/intdown/.style={
+        create col/expr={\pgfmathaccuma+(\thisrow{down}+\prevrow{down})/2*(\thisrow{x}-\prevrow{x})}
+    },
+    columns={x,up,intup,down,intdown}
+]
+{\numsamples}
+\inttable
+}
+
+\begin{document}
+\foreach \mult in {0,1,...,55}
+{
+    % get new mean
+    \pgfmathsetmacro{\meandiff}{\mult * \meandiffmult}
+    \pgfmathsetmacro{\mean}{\meanold + \meandiff}
+
+    \pgfmathsetmacro{\valid}{0}
+    \ifdim \mean pt = \meanold pt
+    \else
+        % calculate edges
+        \pgfmathsetmacro{\terma}{\mean^2 - \meanold^2}
+        \pgfmathsetmacro{\termb}{2 * (\std^2)}
+        \pgfmathsetmacro{\termc}{2 * (\mean - \meanold)}
+        \pgfmathsetmacro{\up}{(\terma + (\termb * ln(1 + \eps)))/\termc}
+        \pgfmathsetmacro{\down}{(\terma + (\termb * ln(1 - \eps)))/\termc}
+        \pgfmathsetmacro{\valid}{1}
+    \fi
+   
+    \newcommand{\extraticks}{}
+    \ifnum \valid = 1
+        \renewcommand{\extraticks}{\down, \up}
+    \fi
+
+    \begin{tikzpicture}
+        \begin{axis}
+            [ 
+                axis x line=center,
+                axis y line=center,
+                every extra x tick/.style={xticklabel 
+                    style={color=gray}, tick style=gray},
+                extra x ticks = \extraticks,
+                extra x tick labels = {},
+                xlabel=$a$,
+                ymin=0, ymax=1.5,
+                legend pos = north west,
+                xmin=\lowx, xmax=\highx
+            ]
+            \addplot [color=black, mark=none, samples=\numsamples] 
+                {gaussian(\std, \meanold)}; 
+            \addplot [color=blue, mark=none, samples=\numsamples]
+                {gaussian(\std, \mean)}; 
+            \legend{$\pi_{\theta_{old}}(s_t)$, $\pi_{\theta}(s_t)$, 
+            $r_{t, CLIP}^+$, $r_{t, CLIP}^-$}
+            \addplot [color=\upcolor, mark=none, samples=50, dashed] {
+            ratioclippedmin}; 
+            \addplot [color=\downcolor, mark=none, samples=50, dashed] {
+            ratioclippedmax}; 
+            \ifnum \valid = 1
+                \linetooldgaus{\up}
+                \linetooldgaus{\down}
+            \fi
+        \end{axis}
+
+        \newinttable
+        \pgfplotstablegetelem{\numsamplessub}{intup}\of\inttable
+        \pgfmathsetmacro{\expdiffup}{1 - \pgfplotsretval}
+        \pgfplotstablegetelem{\numsamplessub}{intdown}\of\inttable
+        \pgfmathsetmacro{\expdiffdown}{\pgfplotsretval - 1}
+        \begin{axis}[
+          ybar,
+          enlargelimits=0.50,
+          ymin=0, ymax=1,
+          symbolic x coords={1,2},
+          ytick={0, 0.5, 1},
+          xtick=data,
+          xticklabels={$1 - E[r_{t, CLIP}^+]$, $E[r_{t, CLIP}^-] - 1$},
+          nodes near coords, 
+          nodes near coords align={vertical},
+          at={(0, -240)}
+          ]
+          \addplot[fill=gray] coordinates {(1,\expdiffup) (2,\expdiffdown)};
+        \end{axis}
+    \end{tikzpicture}
+}
+\end{document}
