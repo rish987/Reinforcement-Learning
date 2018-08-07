@@ -9,9 +9,10 @@ from imports import *
 GRAPH_OUT = "graph_out.pgf"
 
 # -- graph data keys --
-GD_STD = "std"
+GD_CHG = "chg"
 GD_AVG_NUM_UPCLIPS = "avg_num_upclips"
 GD_AVG_NUM_DOWNCLIPS = "avg_num_downclips"
+GD_ACTUAL_CLIPS = "actual_clips"
 # -- 
 # - 
 

@@ -86,28 +86,44 @@ class PPOModel(object):
     def adam_update(self, obs, acs, advs_gl, vals_gl):
         # clear gradients
         self.optimizer.zero_grad()
-        pol_loss, val_loss, num_upclips, num_downclips = \
-            self.loss(obs, acs, advs_gl, vals_gl)
+        pol_loss, val_loss = self.loss(obs, acs, advs_gl, vals_gl)
         loss = pol_loss + val_loss
         loss.backward()
         self.optimizer.step()
 
-        return num_upclips, num_downclips
+    """
+    Calculates the loss ratio given actions and observations.
+    """
+    def ratio(self, obs, acs):
+        return torch.exp(self.policy_net.logp(acs, obs) - \
+            self.policy_net_old.logp(acs, obs))
+
+    """
+    Gets the magnitude of the differences between the old and new policies.
+    """
+    def policy_change(self):
+        total_mag_sq = 0
+        for param1, param2 in zip(self.policy_net.parameters(), \
+            self.policy_net_old.parameters()):
+            diff = param1 - param2
+            diffmag = torch.sum(diff ** 2).item()
+            total_mag_sq += diffmag
+
+        return total_mag_sq
         
     """
     Calculates the total loss with the given batch data.
     """
     def loss(self, obs, acs, advs_gl, vals_gl):
-        ratio = torch.exp(self.policy_net.logp(acs, obs) - \
-                self.policy_net_old.logp(acs, obs))
-        
-        num_upclips = torch.sum(ratio > (1 + self.clip_param)).item()
-        num_downclips = torch.sum(ratio < (1 - self.clip_param)).item()
+        ratio = self.ratio(obs, acs)
 
+        target = from_numpy_dt(vals_gl)
+        #print(target.mean().item())
+        
         # - calculate policy loss -
-        surr1 = ratio * from_numpy_dt(advs_gl)
+        surr1 = ratio * target
         surr2 = torch.clamp(ratio, min=1.0 - self.clip_param, max=1.0 +\
-                self.clip_param) * from_numpy_dt(advs_gl)
+                self.clip_param) * target
         pol_loss = -torch.mean(torch.min(surr1, surr2))
         # - 
 
@@ -116,7 +132,7 @@ class PPOModel(object):
                 - from_numpy_dt(vals_gl[:, None]), 2.0))
         #print("pol_loss: {0} \t val_loss: {1}".format(pol_loss, val_loss))
 
-        return pol_loss, val_loss, num_upclips, num_downclips
+        return pol_loss, val_loss
 
 """
 Neural network and standard deviation for the policy function.
@@ -127,8 +143,11 @@ class PolicyNetVar(object):
         self.device = device_in
         self.policy_net = GeneralNet(env, num_hidden_layers, \
             hidden_layer_size, env.action_space.shape[0]).to(self.device)
+        # TODO fix and put requires_grad as argument to Parameter call instead
+#        self.logstd = nn.Parameter(torch.zeros(env.action_space.shape[0], \
+#            requires_grad=(not fixed), device=self.device))
         self.logstd = nn.Parameter(torch.zeros(env.action_space.shape[0], \
-            requires_grad=(not fixed), device=self.device))
+            requires_grad=False, device=self.device), requires_grad=False)
 
         if fixed:
             # prevent old policy from being considered in update
@@ -164,7 +183,8 @@ class PolicyNetVar(object):
     def parameters(self):
         for param in self.policy_net.parameters():
             yield param
-        yield self.logstd
+        # TODO fix
+        # yield self.logstd
 
     def std(self):
         return torch.exp(self.logstd)

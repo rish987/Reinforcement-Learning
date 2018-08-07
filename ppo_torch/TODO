@@ -1,1 +1,4 @@
 - check for rogue tensors (not attached to any particular device)
+
+Questions
+- 

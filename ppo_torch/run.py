@@ -6,8 +6,10 @@
 # (PPO), using PyTorch instead of TensorFlow.
 from imports import *
 from misc_utils import set_random_seed, Dataset
-from misc_utils import RO_EP_LEN, RO_EP_RET, RO_OB, RO_AC, RO_ADV_GL,\
-    RO_VAL_GL, GRAPH_OUT
+from misc_utils import \
+    RO_EP_LEN, RO_EP_RET, RO_OB, RO_AC, RO_ADV_GL, RO_VAL_GL, \
+    GRAPH_OUT,\
+    GD_CHG, GD_AVG_NUM_UPCLIPS, GD_AVG_NUM_DOWNCLIPS, GD_ACTUAL_CLIPS
 from ppo_model import PPOModel
 from rollout import get_rollout
 import matplotlib.pyplot as plt;
@@ -23,7 +25,7 @@ g_num_hidden_layers = 2
 
 # -- run parameters --
 # number of timesteps to train over
-g_num_timesteps = 500000
+g_num_timesteps = 200000
 # number of timesteps in a single rollout (simulated trajectory with fixed
 # parameters)
 g_timesteps_per_rollout = 2048 * 6
@@ -81,14 +83,25 @@ def train(hidden_layer_size, num_hidden_layers, num_timesteps, \
     # - 
 
     # - initialize graph data -
-    # to store negated changes in standard deviations at each iteration
-    stds = [];
+    # to store change magnitudes at each iteration
+    changes = [];
 
     # to store the average number of upclips (r_t > 1 + epsilon) and downclips
     # (r_t < 1 - epsilon) taken over all batches at each iteration
     avg_num_upclips = [];
     avg_num_downclips = [];
     # - 
+
+    # TODO Delete
+#    test_obs = np.random.rand(1, 4) 
+#    test_acs = model.eval_policy_var_single(test_obs)
+#    test_advs_gl = np.arange(1)
+#    test_vals_gl = np.arange(1) + 1
+#    model.adam_update(test_obs, test_acs,\
+#    test_advs_gl, test_vals_gl)
+#    import sys
+#    sys.exit()
+    # Delete TODO 
 
     # - training -
     # continue training until timestep limit is reached
@@ -102,6 +115,9 @@ def train(hidden_layer_size, num_hidden_layers, num_timesteps, \
         # update old policy function to new policy function
         model.update_old_pol()
 
+        # center advatages
+        rollout[RO_ADV_GL] = (rollout[RO_ADV_GL] - rollout[RO_ADV_GL].mean()) 
+
         # place data into dataset that will shuffle and batch them for training
         data = Dataset({RO_OB:rollout[RO_OB], RO_AC:rollout[RO_AC],\
             RO_ADV_GL:rollout[RO_ADV_GL], RO_VAL_GL:rollout[RO_VAL_GL]})
@@ -111,43 +127,42 @@ def train(hidden_layer_size, num_hidden_layers, num_timesteps, \
 #                max(1.0 - float(timesteps) / num_timesteps, 0)
         # - 
 
-        # number of upclips and downclips at each batch
-        num_upclips = []
-        num_downclips = []
-
         # - SGD training -
         # go through all epochs
         for e in range(num_epochs):
             # go through all randomly organized batches
             for batch in data.iterate_once(batch_size):
                 # get gradient
-                num_upclips_new, num_downclips_new =\
-                    model.adam_update(batch[RO_OB], batch[RO_AC],\
+                model.adam_update(batch[RO_OB], batch[RO_AC],\
                     batch[RO_ADV_GL], batch[RO_VAL_GL])
-                num_upclips.append(num_upclips_new)
-                num_downclips.append(num_downclips_new)
         # - 
+    
+        ratio = model.ratio(rollout[RO_OB], rollout[RO_AC])
+        num_upclips = torch.sum(ratio > (1 + model.clip_param)).item()
+        num_downclips = torch.sum(ratio < (1 - model.clip_param)).item()
+        actual_clips = torch.sum(ratio > (1 + model.clip_param)).item()
 
-        avg_num_upclips.append(np.mean(num_upclips))
-        avg_num_downclips.append(np.mean(num_downclips))
+        avg_num_upclips.append(num_upclips)
+        avg_num_downclips.append(num_downclips)
 
         # standard deviation after update
-        std = model.policy_net.std().item();
+        change = model.policy_change()
 
         # save standard deviation
-        stds.append(std)
+        changes.append(change)
 
         # update total timesteps traveled so far
         timesteps += np.sum(rollout[RO_EP_LEN])
-        #print(avg_num_upclips[-1], avg_num_downclips[-1], stds[-1])
+        print(avg_num_upclips[-1], avg_num_downclips[-1], changes[-1])
         print("Time Elapsed: {0}; Average Reward: {1}".format(timesteps, 
             np.mean(rollout[RO_EP_LEN][-100:])))
     # - 
 
     graph_data = {}
-    graph_data[GD_STD] = np.array(stds)
+    graph_data[GD_CHG] = np.array(changes)
     graph_data[GD_AVG_NUM_UPCLIPS] = np.array(avg_num_upclips)
     graph_data[GD_AVG_NUM_DOWNCLIPS] = np.array(avg_num_downclips)
+    graph_data[GD_ACTUAL_CLIPS] = np.array(avg_num_downclips)
 
     return graph_data
 
@@ -164,28 +179,29 @@ def get_average_list_arr(list_arr):
     list_arr_cropped = [arr[:arr_len] for arr in list_arr]
     return np.average(np.array(list_arr_cropped), axis=0)
 
-def graph_stds_and_clips(stds, avg_num_upclips, avg_num_downclips):
-    iterations = np.arange(stds.shape[0]) + 1
+def graph_chgs_and_clips(chgs, avg_num_upclips, avg_num_downclips, actual_clips):
+    iterations = np.arange(chgs.shape[0]) + 1
 
     plt.figure()
-    plt.subplot(211)
+    ax = plt.subplot(211)
     plt.ylabel("count")
     plt.xlabel("Number of Iterations")
     plt.title("Clipping Behavior")
 
-    plt.plot(iterations, avg_num_upclips, linestyle='-', \
-            color=(0.5, 0.5, 0.5), label='$|\{r_t \mid r_t > 1 + \epsilon\}|$')
-    plt.plot(iterations, avg_num_downclips, linestyle='-', \
-            color=(0.7, 0.7, 0.7), label='$|\{r_t \mid r_t < 1 - \epsilon\}|$')
+    plt.plot(iterations, actual_clips, linestyle='-', \
+        color=(0.0, 0.0, 0.0), \
+        #label='$|\{r_t \mid r_t < 1 - \epsilon\}| - |\{r_t \mid r_t > 1 + \epsilon\}|$')
+        label='$|\{t \mid (r_t > 1 + \epsilon) \land (G_t > 0)\}|$')
+    ax.axhline(color="gray")
 
     plt.legend()
     
     plt.subplot(212)
-    plt.ylabel("$\sigma$")
+    plt.ylabel("$||\\Delta \\pi||$")
     plt.xlabel("Number of Iterations")
-    plt.title("Standard Deviation")
-    plt.plot(iterations, stds, linestyle='-', color=(0.0, 0.0, 0.0),\
-            label='$\sigma$')
+    plt.title("Magnitude of Policy Change")
+    plt.plot(iterations, chgs, linestyle='-', color=(0.0, 0.0, 0.0),\
+            label='$||\\Delta \\pi||$')
 
     plt.legend()
 
@@ -194,28 +210,32 @@ def graph_stds_and_clips(stds, avg_num_upclips, avg_num_downclips):
     plt.savefig(GRAPH_OUT)
     plt.show()
 
-def stds_and_clips_run():
-    all_stds = []
+def chgs_and_clips_run():
+    all_chgs = []
     all_avg_num_upclips = []
     all_avg_num_downclips = []
-    for seed in range(8):
+    all_actual_clips = []
+    for seed in range(3):
         graph_data = global_run_seed(seed)
-        stds = graph_data[GD_STD]
+        chgs = graph_data[GD_CHG]
         avg_num_upclips = graph_data[GD_AVG_NUM_UPCLIPS]
         avg_num_downclips = graph_data[GD_AVG_NUM_DOWNCLIPS]
-        all_stds.append(stds)
+        actual_clips = graph_data[GD_ACTUAL_CLIPS]
+        all_chgs.append(chgs)
         all_avg_num_upclips.append(avg_num_upclips)
         all_avg_num_downclips.append(avg_num_downclips)
+        all_actual_clips.append(actual_clips)
 
-    stds_avg = get_average_list_arr(all_stds)
+    chgs_avg = get_average_list_arr(all_chgs)
     avg_num_upclips_avg = get_average_list_arr(all_avg_num_upclips)
     avg_num_downclips_avg = get_average_list_arr(all_avg_num_downclips)
+    actual_clips_avg = get_average_list_arr(all_actual_clips)
     
-    graph_stds_and_clips(stds_avg, avg_num_upclips_avg,\
-            avg_num_downclips_avg)
+    graph_chgs_and_clips(chgs_avg, avg_num_upclips_avg,\
+            avg_num_downclips_avg, actual_clips_avg)
 
 def main():
-    stds_and_clips_run()
+    chgs_and_clips_run()
 
 if __name__ == '__main__':
     main()
