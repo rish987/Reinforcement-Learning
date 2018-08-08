@@ -314,6 +314,247 @@
         agreement with the above theoretical results.
 \end{itemize}
 
+\newpage
+\section*{Expected Loss Contributions}
+\begin{itemize}
+    \item Assume a gaussian action space with fixed standard deviations and
+        clipping min-filter.
+    \item It can be shown that the point at which $r_t = 1 + \epsilon$ is:
+    \begin{align*}
+        x^{+} &=
+        \frac{(\mu^2 - \mu_{old}^2)
+            + 2\sigma^2\ln\left(1 + \epsilon\right)}
+            {2(\mu - \mu_{old})}
+    \end{align*}
+    \item Similarly, it can be shown that the point at which $r_t = 1 -
+        \epsilon$ is:
+    \begin{align*}
+        x^{-} &=
+        \frac{(\mu^2 - \mu_{old}^2)
+            + 2\sigma^2\ln\left(1 - \epsilon\right)}
+            {2(\mu - \mu_{old})}
+    \end{align*}
+    \item Let $p(\mu, x)$ be the probability of $x$ given a gaussian
+        distribution with fixed standard deviation $\sigma$ and mean $\mu$.
+    \item Solving for the expected ratio coefficients for positive estimators:
+    \begin{align*}
+        E[r_{t, CLIP}^{+}] &= \int_{-\infty}^{x^{+}}p(\mu_{old}, x)r_{t}(x)dx +
+                            \int_{x^{+}}^{\infty}p(\mu_{old}, x)(1 +
+                            \epsilon)dx\\
+        &= \int_{-\infty}^{x^{+}}
+            p(\mu_{old}, x)
+            \frac{p(\mu, x)}{p(\mu_{old}, x)}
+            dx +
+            (1 + \epsilon)
+            \int_{x^{+}}^{\infty}p(\mu_{old}, x)dx\\
+        &= \int_{-\infty}^{x^{+}}
+            p(\mu, x)
+            dx +
+            (1 + \epsilon)
+            \int_{x^{+}}^{\infty}p(\mu_{old}, x)dx\\
+    \end{align*}
+    \item Finding the expected penalty contribution:
+    \begin{align*}
+        1 - E[r_{t, CLIP}^+]
+        &= 1 - \int_{-\infty}^{x^{+}}
+            p(\mu, x)
+            dx -
+            (1 + \epsilon)
+            \int_{x^{+}}^{\infty}p(\mu_{old}, x)dx\\
+            &= \int_{x^{+}}^{\infty}
+            p(\mu, x)
+            dx -
+            (1 + \epsilon)
+            \int_{x^{+}}^{\infty}p(\mu_{old}, x)dx\\
+            &= 
+            \int_{x^{+}}^{\infty}
+            p(\mu, x) -
+            (1 + \epsilon)
+            p(\mu_{old}, x)dx\\
+    \end{align*}
+    \item Similarly, solving for the expected ratio coefficients for negative estimators:
+    \begin{align*}
+        E[r_{t, CLIP}^{-}] &= \int_{-\infty}^{x^{-}}p(\mu_{old}, x)(1 -
+                            \epsilon)dx
+                            +
+                            \int_{x^{-}}^{\infty}p(\mu_{old}, x)r_{t}(x)dx\\
+        &= (1 - \epsilon)\int_{-\infty}^{x^{-}}p(\mu_{old}, x)dx
+        +
+        \int_{x^{-}}^{\infty}p(\mu, x)dx\\
+    \end{align*}
+    \item Finding the expected penalty contribution:
+    \begin{align*}
+        E[r_{t, CLIP}^{-}] - 1 &= \int_{-\infty}^{x^{-}}p(\mu_{old}, x)(1 -
+                            \epsilon)dx
+                            +
+                            \int_{x^{-}}^{\infty}p(\mu, x)dx - 1\\
+        &= -\left(1 - \int_{-\infty}^{x^{-}}p(\mu_{old}, x)(1 - \epsilon)dx
+        -
+        \int_{x^{-}}^{\infty}p(\mu, x)dx \right)\\
+        &= -\left(
+        - \int_{-\infty}^{x^{-}}p(\mu_{old}, x)(1 - \epsilon)dx
+        +
+        \int_{-\infty}^{x^{-}}p(\mu, x)dx 
+        \right)\\
+        &= 
+        \int_{-\infty}^{x^{-}}p(\mu_{old}, x)(1 - \epsilon)dx
+        -
+        \int_{-\infty}^{x^{-}}p(\mu, x)dx 
+        \\
+        &= 
+        \int_{-\infty}^{x^{-}}p(\mu_{old}, x)(1 - \epsilon) - p(\mu, x)dx
+        \\
+    \end{align*}
+    \item Alternatively, this can be written as:
+    \begin{align*}
+        E[r_{t, CLIP}^{-}] - 1 &= 
+        \int_{-\infty}^{x^{-}}p(\mu_{old}, x)(1 - \epsilon)dx
+        -
+        \int_{-\infty}^{x^{-}}p(\mu, x)dx 
+        \\
+        &= 
+        (1 - \epsilon)\left(
+        1 - 
+        \left(
+        \int_{x^{-}}^{x^{+}}p(\mu_{old}, x)dx
+        +
+        \int_{x^{+}}^{\infty}p(\mu_{old}, x)dx
+        \right)
+        \right)
+        -\\
+        &\left(1 - 
+        \left(
+        \int_{x^{-}}^{x^{+}}p(\mu, x)dx 
+        + 
+        \int_{x^{+}}^{\infty}p(\mu, x)dx 
+        \right)
+        \right)
+        \\
+        &= 
+        (1 - \epsilon)\left(
+        1 - 
+        \int_{x^{-}}^{x^{+}}p(\mu_{old}, x)dx
+        -
+        \int_{x^{+}}^{\infty}p(\mu_{old}, x)dx
+        \right)
+        -\\
+        &\left(1 - 
+        \int_{x^{-}}^{x^{+}}p(\mu, x)dx 
+        - 
+        \int_{x^{+}}^{\infty}p(\mu, x)dx 
+        \right)
+        \\
+        &= 
+        1 - \epsilon
+        - 
+        (1 - \epsilon)
+        \left(
+        \int_{x^{-}}^{x^{+}}p(\mu_{old}, x)dx
+        +
+        \int_{x^{+}}^{\infty}p(\mu_{old}, x)dx
+        \right)
+        - 1 \\
+        &+ 
+        \int_{x^{-}}^{x^{+}}p(\mu, x)dx 
+        + 
+        \int_{x^{+}}^{\infty}p(\mu, x)dx 
+        \\
+        &=
+        -\epsilon
+        - 
+        (1 - \epsilon)
+        \left(
+        \int_{x^{-}}^{x^{+}}p(\mu_{old}, x)dx
+        +
+        \int_{x^{+}}^{\infty}p(\mu_{old}, x)dx
+        \right)\\
+        &+ 
+        \int_{x^{-}}^{x^{+}}p(\mu, x)dx 
+        + 
+        \int_{x^{+}}^{\infty}p(\mu, x)dx 
+        \\
+    \end{align*}
+    \item Finding the differences between these two values
+    \begin{align*}
+        (1 - E[r_{t, CLIP}^{+}]) - (E[r_{t, CLIP}^{-}] - 1)
+        &=
+        \int_{x^{+}}^{\infty}
+        p(\mu, x)
+        dx -
+        (1 + \epsilon)
+        \int_{x^{+}}^{\infty}p(\mu_{old}, x)dx\\
+        &+
+        \epsilon
+        + 
+        (1 - \epsilon)
+        \left(
+        \int_{x^{-}}^{x^{+}}p(\mu_{old}, x)dx
+        +
+        \int_{x^{+}}^{\infty}p(\mu_{old}, x)dx
+        \right)\\
+        &- 
+        \int_{x^{-}}^{x^{+}}p(\mu, x)dx 
+        - 
+        \int_{x^{+}}^{\infty}p(\mu, x)dx 
+        \\
+        &=
+        - (1 + \epsilon)
+        \int_{x^{+}}^{\infty}p(\mu_{old}, x)dx\\
+        &+
+        \epsilon
+        + 
+        (1 - \epsilon)
+        \left(
+        \int_{x^{-}}^{x^{+}}p(\mu_{old}, x)dx
+        +
+        \int_{x^{+}}^{\infty}p(\mu_{old}, x)dx
+        \right)\\
+        &- 
+        \int_{x^{-}}^{x^{+}}p(\mu, x)dx 
+        \\
+        &=
+        -\epsilon
+        \int_{x^{+}}^{\infty}p(\mu_{old}, x)dx\\
+        &+
+        \epsilon
+        + 
+        \left(
+        (1 - \epsilon)
+        \int_{x^{-}}^{x^{+}}p(\mu_{old}, x)dx
+        - \epsilon
+        \int_{x^{+}}^{\infty}p(\mu_{old}, x)dx
+        \right)\\
+        &- 
+        \int_{x^{-}}^{x^{+}}p(\mu, x)dx 
+        \\
+        &=
+        -2\epsilon
+        \int_{x^{+}}^{\infty}p(\mu_{old}, x)dx\\
+        &+
+        \epsilon
+        + 
+        (1 - \epsilon)
+        \int_{x^{-}}^{x^{+}}p(\mu_{old}, x)dx
+        \\
+        &- 
+        \int_{x^{-}}^{x^{+}}p(\mu, x)dx 
+        \\
+        &=
+        \epsilon
+        + 
+        (1 - \epsilon)
+        \int_{x^{-}}^{x^{+}}p(\mu_{old}, x)dx
+        \\
+        &-\left(\int_{x^{-}}^{x^{+}}p(\mu, x)dx 
+        +2\epsilon
+        \int_{x^{+}}^{\infty}p(\mu_{old}, x)dx\right)\\
+        \\
+    \end{align*}
+    
+    \item
+
+\end{itemize}
+
 %\newpage
 %\section*{Ideas and Intuitions}
 %\subsection*{Sigmoid Min-Filters}
