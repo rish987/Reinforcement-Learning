@@ -29,6 +29,27 @@
 \newcommand{\probup}{}
 \newcommand{\upcolor}{black!90}
 \newcommand{\downcolor}{black!40}
+\newcommand{\newprobtable}[3]
+{
+\pgfplotstablenew[
+    create on use/x/.style={
+        create col/expr={((\pgfplotstablerow/\numsamples) * \xrange) + \lowx}
+    },
+    create on use/y/.style={
+        create col/expr={
+            ((1/(\std * sqrt(2 * pi))) * exp((-1 / 2) 
+            * (((\thisrow{x} - #1)/\std) ^ 2)))
+            * (((\thisrow{x} > #2) && (\thisrow{x} < #3))?1:0)
+        }
+    },
+    create on use/int/.style={
+        create col/expr={\pgfmathaccuma+(\thisrow{y}+\prevrow{y})/2*(\thisrow{x}-\prevrow{x})}
+    },
+    columns={x,y,int}
+]
+{\numsamples}
+\probtable
+}
 
 \newcommand{\newinttable}[0]
 {
@@ -139,19 +160,60 @@
         \pgfmathsetmacro{\expdiffup}{1 - \pgfplotsretval}
         \pgfplotstablegetelem{\numsamplessub}{intdown}\of\inttable
         \pgfmathsetmacro{\expdiffdown}{\pgfplotsretval - 1}
+
+        \pgfmathsetmacro{\terma}{0}
+        \pgfmathsetmacro{\termb}{0}
+
+        \ifnum \valid = 1
+            \newprobtable{\meanold}{\down}{\up}
+            \pgfplotstablegetelem{\numsamplessub}{int}\of\probtable
+            \pgfmathsetmacro{\inta}{\pgfplotsretval}
+            \newprobtable{\mean}{\down}{\up}
+            \pgfplotstablegetelem{\numsamplessub}{int}\of\probtable
+            \pgfmathsetmacro{\intb}{\pgfplotsretval}
+            \newprobtable{\meanold}{\up}{\highx}
+            \pgfplotstablegetelem{\numsamplessub}{int}\of\probtable
+            \pgfmathsetmacro{\intc}{\pgfplotsretval}
+            \pgfmathsetmacro{\terma}{\eps + ((1 - \eps) * \inta)}
+            \pgfmathsetmacro{\termb}{\intb + (2 * \eps * \intc)}
+
+            % TODO delete
+            %\newprobtable{\mean}{\up}{\highx}
+            %\pgfplotstablegetelem{\numsamplessub}{int}\of\probtable
+            %\pgfmathsetmacro{\inta}{\pgfplotsretval}
+            %\newprobtable{\meanold}{\up}{\highx}
+            %\pgfplotstablegetelem{\numsamplessub}{int}\of\probtable
+            %\pgfmathsetmacro{\intb}{\pgfplotsretval}
+            %\pgfmathsetmacro{\terma}{\inta - ((1 + \eps) * \intb)}
+
+            %\newprobtable{\meanold}{\lowx}{\down}
+            %\pgfplotstablegetelem{\numsamplessub}{int}\of\probtable
+            %\pgfmathsetmacro{\inta}{\pgfplotsretval}
+            %\newprobtable{\mean}{\lowx}{\down}
+            %\pgfplotstablegetelem{\numsamplessub}{int}\of\probtable
+            %\pgfmathsetmacro{\intb}{\pgfplotsretval}
+            %\pgfmathsetmacro{\termb}{((1 - \eps) * \inta) - \intb}
+            % delete TODO
+
+        \fi
+
         \begin{axis}[
           ybar,
-          enlargelimits=0.50,
+          enlarge y limits=0.50,
+          enlarge x limits=0.20,
           ymin=0, ymax=1,
-          symbolic x coords={1,2},
+          symbolic x coords={1,2,3,4},
           ytick={0, 0.5, 1},
           xtick=data,
-          xticklabels={$1 - E[r_{t, CLIP}^+]$, $E[r_{t, CLIP}^-] - 1$},
+          xticklabels={$1 - E[r_{t, CLIP}^+]$, $E[r_{t, CLIP}^-] - 1$, term 1,
+          term 2},
+          x tick label style={rotate=45},
           nodes near coords, 
           nodes near coords align={vertical},
           at={(0, -240)}
           ]
-          \addplot[fill=gray] coordinates {(1,\expdiffup) (2,\expdiffdown)};
+          \addplot[fill=gray] coordinates {(1,\expdiffup) (2,\expdiffdown)
+          (3, \terma) (4, \termb)};
         \end{axis}
     \end{tikzpicture}
 }
