@@ -6,15 +6,16 @@
 / 2) * (((x - \m)/\s) ^ 2));}}
 \tikzset{declare function={
         ratioclippedmin= min((gaussian(\std, \mean) / gaussian(\std,
-\meanold)), 1 + \eps);}} 
+\meanold)), 1 + \epsu);}} 
 \tikzset{declare function={
         ratioclippedmax= max((gaussian(\std, \mean) / gaussian(\std,
-\meanold)), 1 - \eps);}} 
+\meanold)), 1 - \epsd);}} 
 \newcommand{\linetooldgaus}[1]
 {
     \addplot[dashed] coordinates {(#1, 0) (#1, {gaussian(\std, \meanold)})};
 }
-\pgfmathsetmacro{\eps}{0.2}
+\pgfmathsetmacro{\epsu}{0.5}
+\pgfmathsetmacro{\epsd}{0.2}
 
 \pgfmathsetmacro{\meanold}{0}
 \pgfmathsetmacro{\std}{1}
@@ -70,7 +71,7 @@
             ((1/(\std * sqrt(2 * pi))) * exp((-1 / 2) 
             * (((\thisrow{x} - \meanold)/\std) ^ 2))))
             ,
-            1 + \eps)
+            1 + \epsu)
         }
     },
     create on use/down/.style={
@@ -86,7 +87,7 @@
             ((1/(\std * sqrt(2 * pi))) * exp((-1 / 2) 
             * (((\thisrow{x} - \meanold)/\std) ^ 2))))
             ,
-            1 - \eps)
+            1 - \epsd)
         }
     },
     create on use/intup/.style={
@@ -115,8 +116,8 @@
         \pgfmathsetmacro{\terma}{\mean^2 - \meanold^2}
         \pgfmathsetmacro{\termb}{2 * (\std^2)}
         \pgfmathsetmacro{\termc}{2 * (\mean - \meanold)}
-        \pgfmathsetmacro{\up}{(\terma + (\termb * ln(1 + \eps)))/\termc}
-        \pgfmathsetmacro{\down}{(\terma + (\termb * ln(1 - \eps)))/\termc}
+        \pgfmathsetmacro{\up}{(\terma + (\termb * ln(1 + \epsu)))/\termc}
+        \pgfmathsetmacro{\down}{(\terma + (\termb * ln(1 - \epsd)))/\termc}
         \pgfmathsetmacro{\valid}{1}
     \fi
    
@@ -174,8 +175,8 @@
             \newprobtable{\meanold}{\up}{\highx}
             \pgfplotstablegetelem{\numsamplessub}{int}\of\probtable
             \pgfmathsetmacro{\intc}{\pgfplotsretval}
-            \pgfmathsetmacro{\terma}{\eps + ((1 - \eps) * \inta)}
-            \pgfmathsetmacro{\termb}{\intb + (2 * \eps * \intc)}
+            \pgfmathsetmacro{\terma}{\epsd + ((1 - \epsd) * \inta)}
+            \pgfmathsetmacro{\termb}{\intb + ((\epsd + \epsu) * \intc)}
 
             % TODO delete
             %\newprobtable{\mean}{\up}{\highx}
