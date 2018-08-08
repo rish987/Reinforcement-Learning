@@ -9,7 +9,8 @@ from misc_utils import set_random_seed, Dataset, from_numpy_dt
 from misc_utils import \
     RO_EP_LEN, RO_EP_RET, RO_OB, RO_AC, RO_ADV_GL, RO_VAL_GL, \
     GRAPH_OUT,\
-    GD_CHG, GD_AVG_NUM_UPCLIPS, GD_AVG_NUM_DOWNCLIPS, \
+    GD_CHG, GD_AVG_NUM_UPCLIPS, GD_AVG_NUM_DOWNCLIPS, GD_AVG_UPCLIP_DED,\
+    GD_AVG_DOWNCLIP_DED,\
     graph_data_keys
 from ppo_model import PPOModel
 from rollout import get_rollout
@@ -26,7 +27,7 @@ g_num_hidden_layers = 2
 
 # -- run parameters --
 # number of timesteps to train over
-g_num_timesteps = 20000
+g_num_timesteps = 200000
 # number of timesteps in a single rollout (simulated trajectory with fixed
 # parameters)
 g_timesteps_per_rollout = 2048 * 6
@@ -139,6 +140,8 @@ def train(hidden_layer_size, num_hidden_layers, num_timesteps, \
 
         graph_data[GD_AVG_NUM_UPCLIPS].append(num_upclips)
         graph_data[GD_AVG_NUM_DOWNCLIPS].append(num_downclips)
+        graph_data[GD_AVG_UPCLIP_DED].append(avg_upclip_ded)
+        graph_data[GD_AVG_DOWNCLIP_DED].append(avg_downclip_ded)
 
         # standard deviation after update
         change = model.policy_change()
@@ -168,6 +171,28 @@ def get_average_list_arr(list_arr):
     arr_len = min([len(arr) for arr in list_arr]);
     list_arr_cropped = [arr[:arr_len] for arr in list_arr]
     return np.average(np.array(list_arr_cropped), axis=0)
+
+def graph_ded_contr(data):
+    iterations = np.arange(data[GD_CHG].shape[0]) + 1
+
+    plt.figure()
+    plt.ylabel("Proportional Contribution")
+    plt.xlabel("Number of Iterations")
+    plt.title("Expected Penalty Contributions")
+
+    plt.plot(iterations, data[GD_AVG_UPCLIP_DED], linestyle='-', \
+        color=(0.0, 0.0, 0.0), \
+        label='$1 - E[r_{t, CLIP}^+]$')
+    plt.plot(iterations, data[GD_AVG_DOWNCLIP_DED], linestyle='-', \
+        color=(0.0, 0.0, 0.0), \
+        label='$E[r_{t, CLIP}^-] - 1$')
+
+    plt.legend()
+
+    plt.tight_layout()
+
+    plt.savefig(GRAPH_OUT)
+    plt.show()
 
 def graph_chgs_and_clips(data):
     iterations = np.arange(data[GD_CHG].shape[0]) + 1
@@ -226,7 +251,7 @@ def data_run():
 
 def main():
     data = data_run()
-    graph_chgs_and_clips(data)
+    graph_ded_contr(data)
 
 if __name__ == '__main__':
     main()

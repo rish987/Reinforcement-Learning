@@ -12,9 +12,12 @@ GRAPH_OUT = "graph_out.pgf"
 GD_CHG = "chg"
 GD_AVG_NUM_UPCLIPS = "avg_num_upclips"
 GD_AVG_NUM_DOWNCLIPS = "avg_num_downclips"
+GD_AVG_UPCLIP_DED = "avg_upclip_ded"
+GD_AVG_DOWNCLIP_DED = "avg_downclip_ded"
 
 graph_data_keys =\
-    [GD_CHG, GD_AVG_NUM_UPCLIPS, GD_AVG_NUM_DOWNCLIPS]
+    [GD_CHG, GD_AVG_NUM_UPCLIPS, GD_AVG_NUM_DOWNCLIPS, GD_AVG_UPCLIP_DED,\
+    GD_AVG_DOWNCLIP_DED]
 # -- 
 # - 
 
