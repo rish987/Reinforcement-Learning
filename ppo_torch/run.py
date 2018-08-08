@@ -9,7 +9,8 @@ from misc_utils import set_random_seed, Dataset, from_numpy_dt
 from misc_utils import \
     RO_EP_LEN, RO_EP_RET, RO_OB, RO_AC, RO_ADV_GL, RO_VAL_GL, \
     GRAPH_OUT,\
-    GD_CHG, GD_AVG_NUM_UPCLIPS, GD_AVG_NUM_DOWNCLIPS, GD_ACTUAL_CLIPS
+    GD_CHG, GD_AVG_NUM_UPCLIPS, GD_AVG_NUM_DOWNCLIPS, \
+    graph_data_keys
 from ppo_model import PPOModel
 from rollout import get_rollout
 import matplotlib.pyplot as plt;
@@ -25,7 +26,7 @@ g_num_hidden_layers = 2
 
 # -- run parameters --
 # number of timesteps to train over
-g_num_timesteps = 50000
+g_num_timesteps = 20000
 # number of timesteps in a single rollout (simulated trajectory with fixed
 # parameters)
 g_timesteps_per_rollout = 2048 * 6
@@ -83,25 +84,10 @@ def train(hidden_layer_size, num_hidden_layers, num_timesteps, \
     # - 
 
     # - initialize graph data -
-    # to store change magnitudes at each iteration
-    changes = [];
-
-    # to store the average number of upclips (r_t > 1 + epsilon) and downclips
-    # (r_t < 1 - epsilon) taken over all batches at each iteration
-    avg_num_upclips = [];
-    avg_num_downclips = [];
+    graph_data = {}
+    for key in graph_data_keys:
+        graph_data[key] = []
     # - 
-
-    # TODO Delete
-#    test_obs = np.random.rand(1, 4) 
-#    test_acs = model.eval_policy_var_single(test_obs)
-#    test_advs_gl = np.arange(1)
-#    test_vals_gl = np.arange(1) + 1
-#    model.adam_update(test_obs, test_acs,\
-#    test_advs_gl, test_vals_gl)
-#    import sys
-#    sys.exit()
-    # Delete TODO 
 
     # - training -
     # continue training until timestep limit is reached
@@ -137,19 +123,29 @@ def train(hidden_layer_size, num_hidden_layers, num_timesteps, \
                     batch[RO_ADV_GL], batch[RO_VAL_GL])
         # - 
     
+        # - gather graph data -
         ratio = model.ratio(rollout[RO_OB], rollout[RO_AC])
+        clip_param_tensor = torch.tensor(model.clip_param, device=device)
+        avg_ratio_upclipped = torch.min(ratio, \
+            1 + clip_param_tensor).mean().item()
+        avg_ratio_downclipped = torch.max(ratio, \
+            1 - clip_param_tensor).mean().item()
+        avg_ratio = ratio.mean().item()
+        avg_upclip_ded = avg_ratio - avg_ratio_upclipped
+        avg_downclip_ded = avg_ratio_downclipped - avg_ratio
         num_upclips = torch.sum(ratio > (1 + model.clip_param)).item()
         num_downclips = torch.sum(ratio < (1 - model.clip_param)).item()
         actual_clips = torch.sum(ratio > (1 + model.clip_param)).item()
 
-        avg_num_upclips.append(num_upclips)
-        avg_num_downclips.append(num_downclips)
+        graph_data[GD_AVG_NUM_UPCLIPS].append(num_upclips)
+        graph_data[GD_AVG_NUM_DOWNCLIPS].append(num_downclips)
 
         # standard deviation after update
         change = model.policy_change()
 
-        # save standard deviation
-        changes.append(change)
+        # save change magnitude,
+        graph_data[GD_CHG].append(change)
+        # - 
 
         # update total timesteps traveled so far
         timesteps += np.sum(rollout[RO_EP_LEN])
@@ -157,12 +153,6 @@ def train(hidden_layer_size, num_hidden_layers, num_timesteps, \
         print("Time Elapsed: {0}; Average Reward: {1}\n".format(timesteps, 
             np.mean(rollout[RO_EP_LEN][-100:])))
     # - 
-
-    graph_data = {}
-    graph_data[GD_CHG] = np.array(changes)
-    graph_data[GD_AVG_NUM_UPCLIPS] = np.array(avg_num_upclips)
-    graph_data[GD_AVG_NUM_DOWNCLIPS] = np.array(avg_num_downclips)
-    graph_data[GD_ACTUAL_CLIPS] = np.array(avg_num_downclips)
 
     return graph_data
 
@@ -188,7 +178,7 @@ def graph_chgs_and_clips(data):
     plt.xlabel("Number of Iterations")
     plt.title("Clipping Behavior")
 
-    plt.plot(iterations, data[GD_ACTUAL_CLIPS], linestyle='-', \
+    plt.plot(iterations, data[GD_AVG_NUM_DOWNCLIPS], linestyle='-', \
         color=(0.0, 0.0, 0.0), \
         #label='$|\{r_t \mid r_t < 1 - \epsilon\}| - |\{r_t \mid r_t > 1 + \epsilon\}|$')
         label='$|\{t \mid (r_t > 1 + \epsilon) \land (G_t > 0)\}|$')
