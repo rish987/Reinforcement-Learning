@@ -117,7 +117,7 @@ class PPOModel(object):
     def loss(self, obs, acs, advs_gl, vals_gl):
         ratio = self.ratio(obs, acs)
 
-        target = from_numpy_dt(vals_gl)
+        target = from_numpy_dt(advs_gl)
         #print(target.mean().item())
         
         # - calculate policy loss -

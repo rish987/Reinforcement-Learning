@@ -5,7 +5,7 @@
 # Main runner file for implementation of OpenAI Proximal Policy Optimization 
 # (PPO), using PyTorch instead of TensorFlow.
 from imports import *
-from misc_utils import set_random_seed, Dataset
+from misc_utils import set_random_seed, Dataset, from_numpy_dt
 from misc_utils import \
     RO_EP_LEN, RO_EP_RET, RO_OB, RO_AC, RO_ADV_GL, RO_VAL_GL, \
     GRAPH_OUT,\
@@ -25,7 +25,7 @@ g_num_hidden_layers = 2
 
 # -- run parameters --
 # number of timesteps to train over
-g_num_timesteps = 200000
+g_num_timesteps = 20000
 # number of timesteps in a single rollout (simulated trajectory with fixed
 # parameters)
 g_timesteps_per_rollout = 2048 * 6
@@ -153,8 +153,8 @@ def train(hidden_layer_size, num_hidden_layers, num_timesteps, \
 
         # update total timesteps traveled so far
         timesteps += np.sum(rollout[RO_EP_LEN])
-        print(avg_num_upclips[-1], avg_num_downclips[-1], changes[-1])
-        print("Time Elapsed: {0}; Average Reward: {1}".format(timesteps, 
+        #print(avg_num_upclips[-1], avg_num_downclips[-1], changes[-1])
+        print("Time Elapsed: {0}; Average Reward: {1}\n".format(timesteps, 
             np.mean(rollout[RO_EP_LEN][-100:])))
     # - 
 
@@ -179,8 +179,8 @@ def get_average_list_arr(list_arr):
     list_arr_cropped = [arr[:arr_len] for arr in list_arr]
     return np.average(np.array(list_arr_cropped), axis=0)
 
-def graph_chgs_and_clips(chgs, avg_num_upclips, avg_num_downclips, actual_clips):
-    iterations = np.arange(chgs.shape[0]) + 1
+def graph_chgs_and_clips(data):
+    iterations = np.arange(data[GD_CHG].shape[0]) + 1
 
     plt.figure()
     ax = plt.subplot(211)
@@ -188,7 +188,7 @@ def graph_chgs_and_clips(chgs, avg_num_upclips, avg_num_downclips, actual_clips)
     plt.xlabel("Number of Iterations")
     plt.title("Clipping Behavior")
 
-    plt.plot(iterations, actual_clips, linestyle='-', \
+    plt.plot(iterations, data[GD_ACTUAL_CLIPS], linestyle='-', \
         color=(0.0, 0.0, 0.0), \
         #label='$|\{r_t \mid r_t < 1 - \epsilon\}| - |\{r_t \mid r_t > 1 + \epsilon\}|$')
         label='$|\{t \mid (r_t > 1 + \epsilon) \land (G_t > 0)\}|$')
@@ -200,7 +200,7 @@ def graph_chgs_and_clips(chgs, avg_num_upclips, avg_num_downclips, actual_clips)
     plt.ylabel("$||\\Delta \\pi||$")
     plt.xlabel("Number of Iterations")
     plt.title("Magnitude of Policy Change")
-    plt.plot(iterations, chgs, linestyle='-', color=(0.0, 0.0, 0.0),\
+    plt.plot(iterations, data[GD_CHG], linestyle='-', color=(0.0, 0.0, 0.0),\
             label='$||\\Delta \\pi||$')
 
     plt.legend()
@@ -210,32 +210,33 @@ def graph_chgs_and_clips(chgs, avg_num_upclips, avg_num_downclips, actual_clips)
     plt.savefig(GRAPH_OUT)
     plt.show()
 
-def chgs_and_clips_run():
-    all_chgs = []
-    all_avg_num_upclips = []
-    all_avg_num_downclips = []
-    all_actual_clips = []
+def get_average_data(all_data):
+    comb_all_data = {}
+    for key in all_data[0]:
+        comb_all_data[key] = []
+
+    for data in all_data:
+        for key in data:
+            comb_all_data[key].append(data[key])
+
+    avg_all_data = {}
+    for key in comb_all_data:
+        avg_all_data[key] = get_average_list_arr(comb_all_data[key])
+
+    return avg_all_data
+        
+    
+def data_run():
+    all_data = []
     for seed in range(3):
         graph_data = global_run_seed(seed)
-        chgs = graph_data[GD_CHG]
-        avg_num_upclips = graph_data[GD_AVG_NUM_UPCLIPS]
-        avg_num_downclips = graph_data[GD_AVG_NUM_DOWNCLIPS]
-        actual_clips = graph_data[GD_ACTUAL_CLIPS]
-        all_chgs.append(chgs)
-        all_avg_num_upclips.append(avg_num_upclips)
-        all_avg_num_downclips.append(avg_num_downclips)
-        all_actual_clips.append(actual_clips)
+        all_data.append(graph_data)
 
-    chgs_avg = get_average_list_arr(all_chgs)
-    avg_num_upclips_avg = get_average_list_arr(all_avg_num_upclips)
-    avg_num_downclips_avg = get_average_list_arr(all_avg_num_downclips)
-    actual_clips_avg = get_average_list_arr(all_actual_clips)
-    
-    graph_chgs_and_clips(chgs_avg, avg_num_upclips_avg,\
-            avg_num_downclips_avg, actual_clips_avg)
+    return get_average_data(all_data)
 
 def main():
-    chgs_and_clips_run()
+    data = data_run()
+    graph_chgs_and_clips(data)
 
 if __name__ == '__main__':
     main()
