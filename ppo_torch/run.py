@@ -25,7 +25,7 @@ g_num_hidden_layers = 2
 
 # -- run parameters --
 # number of timesteps to train over
-g_num_timesteps = 20000
+g_num_timesteps = 50000
 # number of timesteps in a single rollout (simulated trajectory with fixed
 # parameters)
 g_timesteps_per_rollout = 2048 * 6
