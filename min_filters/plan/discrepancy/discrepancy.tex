@@ -14,7 +14,8 @@
 {
     \addplot[dashed] coordinates {(#1, 0) (#1, {gaussian(\std, \meanold)})};
 }
-\pgfmathsetmacro{\epsu}{0.5}
+\pgfmathsetmacro{\epsu}{0.9}
+\pgfmathsetmacro{\epsugr}{0.1}
 \pgfmathsetmacro{\epsd}{0.2}
 
 \pgfmathsetmacro{\meanold}{0}
@@ -23,7 +24,7 @@
 \pgfmathsetmacro{\lowx}{-3}
 \pgfmathsetmacro{\highx}{3}
 \pgfmathsetmacro{\xrange}{\highx - \lowx}
-\pgfmathsetmacro{\numsamples}{100}
+\pgfmathsetmacro{\numsamples}{200}
 \pgfmathsetmacro{\numsamplessub}{\numsamples - 1}
 
 \newcommand{\probdown}{}
@@ -217,5 +218,7 @@
           (3, \terma) (4, \termb)};
         \end{axis}
     \end{tikzpicture}
+
+    %\pgfmathsetmacro{\epsu}{\epsu + \epsugr}
 }
 \end{document}
