@@ -6,4 +6,7 @@ temp*
 *.aux
 *.out
 *.log
+*.nav
+*.snm
+*.toc
 *.synctex.gz
