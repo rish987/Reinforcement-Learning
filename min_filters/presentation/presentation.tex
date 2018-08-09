@@ -2,8 +2,96 @@
 %\documentclass{article}
 \usepackage{animate}
 \usepackage{graphics}
+\setbeamertemplate{frametitle continuation}[from second][(contd.)]
+
+\title{Proximal Policy Optimization with Dynamic Clipping}
+\author{Student: Rishikesh Vaishnav\\Mentor: Sicun Gao}
+
 \begin{document}
+\maketitle
+\begin{frame}[noframenumbering, allowframebreaks]{Introduction}
+    Reinforcement Learning
+    \begin{itemize}
+        \item A general algorithmic technique that seeks to replicate behavioral
+            learning.
+        \item Attempts to maximize rewards through episodic sequences of
+            actions.
+    \end{itemize}
+    \framebreak
+    Trust Region Policy Optimization
+    \begin{itemize}
+        \item TODO explain TRPO's connection to Reinforcement Learning
+        \item The theory behind TRPO suggests choosing a policy parameterization
+            $\theta$ maximizing the surrogate loss:
+            \begin{align*}
+                L_{\theta_{old}}(\theta) 
+                - CD_{KL}^{max}(\theta, \theta_{old})
+            \end{align*}
+            where $C$ is a fixed positive constant and it is shown that 
+            \begin{align*}
+                L_{\theta_{old}}(\theta) &= \frac{1}{1 - \gamma}
+                \mathbb{E}_{s \sim p_{\theta_{old}}, a \sim \theta_{old}}
+                \left[
+                \frac
+                {\pi_{\theta}(a | s)}
+                {\pi_{\theta_{old}} (a | s)}
+                A_{\theta_{old}}(s, a)
+                \right]
+            \end{align*}
+            where $p_{\theta_{old}}$ is the normalized discounted visitation
+            frequency distribution.
+        \item In theory, doing so guarantees monotonic improvement of the
+            policy.
+    \end{itemize}
+    \framebreak
+    Proximal Policy Optimization
+    \begin{itemize}
+        \item TODO explain connection of PPO to TRPO
+    \end{itemize}
+\end{frame}
+
+\begin{frame}[noframenumbering, allowframebreaks]{Potential Shortcomings of PPO}
+    \begin{itemize}
+        \item We can keep track of the expected loss contributions from positive
+            and negative advantages as we get further from the mean.
+        \item TODO explain expected loss contribution equations
+        \item The major effect of using a clipper is to increase expected loss
+            contributions as we get further from the mean.
+        \item Any min-filter that accomplishes this should be valid.
+    \end{itemize}
+        \framebreak
+What happens as we learn?
 \begin{center}
-  \animategraphics[autoplay,loop, scale = 0.6]{10}{discrepancy}{}{}
+  \animategraphics[autoplay,loop, scale = 0.45]{10}{discrepancy}{}{}
 \end{center}
+        \framebreak
+    \begin{itemize}
+        \item Clearly, there is a growing discrepency between expected loss
+            contributions from positive and negative estimators as we move
+            farther from the mean.
+        \item This discrepancy exists empirically as well:
+    \begin{center}
+            \scalebox{0.3}{\input{exp_deds.pgf}} \\
+    \end{center}
+        \item TODO explain why this does not manifest itself in the actual
+            loss.
+        \item However, this discrepancy is not inherent to the TRPO surrogate
+            loss. We can imagine that losses are distributed approximately
+            equally.
+    \end{itemize}
+\end{frame}
+
+\begin{frame}[noframenumbering, allowframebreaks]{Idea}
+    \begin{itemize}
+        \item Is there a way to effectively control this expected discrepancy,
+            along with the rate at which the expected proportional penalty
+            increases?
+        \item TODO introduce idea
+    \end{itemize}
+\end{frame}
+
+\begin{frame}[noframenumbering, allowframebreaks]{Results}
+    TBA
+\end{frame}
+
 \end{document}
