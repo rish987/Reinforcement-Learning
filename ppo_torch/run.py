@@ -10,7 +10,7 @@ from misc_utils import \
     RO_EP_LEN, RO_EP_RET, RO_OB, RO_AC, RO_ADV_GL, RO_VAL_GL, \
     GRAPH_OUT,\
     GD_CHG, GD_AVG_NUM_UPCLIPS, GD_AVG_NUM_DOWNCLIPS, GD_AVG_UPCLIP_DED,\
-    GD_AVG_DOWNCLIP_DED,\
+    GD_AVG_DOWNCLIP_DED, GD_EP_RETS, GD_TIMESTEPS,\
     graph_data_keys
 from ppo_model import PPOModel
 from rollout import get_rollout
@@ -65,7 +65,7 @@ Trains a PPO agent according to given parameters and reports results.
 """
 def train(hidden_layer_size, num_hidden_layers, num_timesteps, \
     timesteps_per_rollout, seed, clip_param_up, clip_param_down, num_epochs, \
-    alpha, batch_size, gamma, lambda_, env_name):
+    alpha, batch_size, gamma, lambda_, env_name, experimental=False):
     # - setup -
     # set up environment 
     env = gym.make(env_name)
@@ -115,6 +115,9 @@ def train(hidden_layer_size, num_hidden_layers, num_timesteps, \
 #                max(1.0 - float(timesteps) / num_timesteps, 0)
         # - 
 
+        # have we just started training?
+        first_train = True
+
         # - SGD training -
         # go through all epochs
         for e in range(num_epochs):
@@ -122,16 +125,19 @@ def train(hidden_layer_size, num_hidden_layers, num_timesteps, \
             for batch in data.iterate_once(batch_size):
                 # get gradient
                 model.adam_update(batch[RO_OB], batch[RO_AC],\
-                    batch[RO_ADV_GL], batch[RO_VAL_GL], True)
+                    batch[RO_ADV_GL], batch[RO_VAL_GL], experimental, \
+                    first_train)
+                if first_train:
+                    first_train = False
         # - 
     
         # - gather graph data -
         ratio = model.ratio(rollout[RO_OB], rollout[RO_AC])
-        clip_param_up_opt, clip_param_down_opt = \
-            model.optimize_clip_params(rollout[RO_OB])
-        clip_param_up_tensor = torch.tensor(clip_param_up_opt, device=device)
+        #clip_param_up_opt, clip_param_down_opt = \
+        #    model.optimize_clip_params(rollout[RO_OB])
+        clip_param_up_tensor = torch.tensor(model.clip_param_up, device=device)
         clip_param_down_tensor = \
-            torch.tensor(clip_param_down_opt, device=device)
+            torch.tensor(model.clip_param_down, device=device)
         avg_ratio_upclipped = torch.min(ratio, \
             1 + clip_param_up_tensor).mean().item()
         avg_ratio_downclipped = torch.max(ratio, \
@@ -142,7 +148,13 @@ def train(hidden_layer_size, num_hidden_layers, num_timesteps, \
         num_upclips = torch.sum(ratio > (1 + clip_param_up_tensor)).item()
         num_downclips = torch.sum(ratio < (1 - clip_param_down_tensor)).item()
         actual_clips = torch.sum(ratio > (1 + clip_param_up_tensor)).item()
+        avg_ret = np.mean(rollout[RO_EP_RET][-100:])
 
+        # update total timesteps traveled so far
+        timesteps += np.sum(rollout[RO_EP_LEN])
+
+        graph_data[GD_EP_RETS].append(avg_ret)
+        graph_data[GD_TIMESTEPS].append(timesteps)
         graph_data[GD_AVG_NUM_UPCLIPS].append(num_upclips)
         graph_data[GD_AVG_NUM_DOWNCLIPS].append(num_downclips)
         graph_data[GD_AVG_UPCLIP_DED].append(avg_upclip_ded)
@@ -155,28 +167,70 @@ def train(hidden_layer_size, num_hidden_layers, num_timesteps, \
         graph_data[GD_CHG].append(change)
         # - 
 
-        # update total timesteps traveled so far
-        timesteps += np.sum(rollout[RO_EP_LEN])
         #print(avg_num_upclips[-1], avg_num_downclips[-1], changes[-1])
         print("Time Elapsed: {0}; Average Reward: {1}\n".format(timesteps, 
-            np.mean(rollout[RO_EP_LEN][-100:])))
+            avg_ret))
     # - 
 
     return graph_data
 
-def global_run_seed(seed):
+def global_run_seed(seed, experimental=False):
     return train(hidden_layer_size=g_hidden_layer_size, \
         num_hidden_layers=g_num_hidden_layers, num_timesteps=g_num_timesteps, \
         timesteps_per_rollout=g_timesteps_per_rollout, seed=seed, \
         clip_param_up=g_clip_param_up, clip_param_down=g_clip_param_down, \
         num_epochs=g_num_epochs, alpha=g_alpha, \
         batch_size=g_batch_size, gamma=g_gamma, lambda_=g_lambda_, \
-        env_name=g_env_name)
+        env_name=g_env_name, experimental=experimental)
 
 def get_average_list_arr(list_arr):
     arr_len = min([len(arr) for arr in list_arr]);
     list_arr_cropped = [arr[:arr_len] for arr in list_arr]
     return np.average(np.array(list_arr_cropped), axis=0)
+
+def graph_comp_ret_ded(data_contr, data_exp):
+    iterations = np.arange(data_contr[GD_CHG].shape[0]) + 1
+
+    plt.figure()
+    plt.subplot(211)
+    plt.ylabel("Average Return")
+    plt.xlabel("Timestep")
+    plt.title("Performance")
+
+    plt.plot(data_contr[GD_TIMESTEPS], data_contr[GD_EP_RETS], linestyle='-', \
+        color=(0.0, 0.0, 0.0), \
+        label='control')
+    plt.plot(data_exp[GD_TIMESTEPS], data_exp[GD_EP_RETS], \
+        linestyle='--', color=(0.0, 0.0, 0.0), \
+        label='experimental')
+
+    plt.legend()
+
+    plt.subplot(212)
+    plt.ylabel("Proportional Contribution")
+    plt.xlabel("Number of Iterations")
+    plt.title("Expected Penalty Contributions")
+
+    plt.plot(iterations, data_contr[GD_AVG_UPCLIP_DED], linestyle='-', \
+        color=(0.0, 0.0, 0.0), \
+        label='$1 - E[r_{t, CLIP}^+]$, control')
+    plt.plot(iterations, data_contr[GD_AVG_DOWNCLIP_DED], linestyle='-', \
+        color=(0.5, 0.5, 0.5), \
+        label='$E[r_{t, CLIP}^-] - 1$, control')
+
+    plt.plot(iterations, data_exp[GD_AVG_UPCLIP_DED], linestyle='--', \
+        color=(0.0, 0.0, 0.0), \
+        label='$1 - E[r_{t, CLIP}^+]$, experimental')
+    plt.plot(iterations, data_exp[GD_AVG_DOWNCLIP_DED], linestyle='--', \
+        color=(0.5, 0.5, 0.5), \
+        label='$E[r_{t, CLIP}^-] - 1 $, experimental')
+
+    plt.legend()
+
+    plt.tight_layout()
+
+    plt.savefig(GRAPH_OUT)
+    plt.show()
 
 def graph_ded_contr(data):
     iterations = np.arange(data[GD_CHG].shape[0]) + 1
@@ -247,17 +301,18 @@ def get_average_data(all_data):
     return avg_all_data
         
     
-def data_run():
+def data_run(experimental=False):
     all_data = []
-    for seed in range(1):
-        graph_data = global_run_seed(seed)
+    for seed in range(3):
+        graph_data = global_run_seed(0, experimental=experimental)
         all_data.append(graph_data)
 
     return get_average_data(all_data)
 
 def main():
-    data = data_run()
-    graph_ded_contr(data)
+    data_contr = data_run(experimental=False)
+    data_exp = data_run(experimental=True)
+    graph_comp_ret_ded(data_contr, data_exp)
 
 if __name__ == '__main__':
     main()

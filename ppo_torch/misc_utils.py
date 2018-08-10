@@ -14,10 +14,12 @@ GD_AVG_NUM_UPCLIPS = "avg_num_upclips"
 GD_AVG_NUM_DOWNCLIPS = "avg_num_downclips"
 GD_AVG_UPCLIP_DED = "avg_upclip_ded"
 GD_AVG_DOWNCLIP_DED = "avg_downclip_ded"
+GD_EP_RETS = "ep_rets"
+GD_TIMESTEPS = "timesteps"
 
 graph_data_keys =\
     [GD_CHG, GD_AVG_NUM_UPCLIPS, GD_AVG_NUM_DOWNCLIPS, GD_AVG_UPCLIP_DED,\
-    GD_AVG_DOWNCLIP_DED]
+    GD_AVG_DOWNCLIP_DED, GD_EP_RETS, GD_TIMESTEPS]
 # -- 
 # - 
 

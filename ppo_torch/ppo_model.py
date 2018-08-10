@@ -86,12 +86,15 @@ class PPOModel(object):
     """
     Updates the parameters of the model according to the Adam framework.
     """
-    def adam_update(self, obs, acs, advs_gl, vals_gl, handle_discrepancy):
+    def adam_update(self, obs, acs, advs_gl, vals_gl, handle_discrepancy,\
+            first_train):
         # clear gradients
         self.optimizer.zero_grad()
-        if handle_discrepancy:
+        if handle_discrepancy and not first_train:
             clip_param_up, clip_param_down = \
                 self.optimize_clip_params(obs)
+            self.clip_param_up = clip_param_up
+            self.clip_param_down = clip_param_down
         else:
             clip_param_up = self.clip_param_up
             clip_param_down = self.clip_param_down
@@ -130,7 +133,7 @@ class PPOModel(object):
     def optimize_clip_params(self, obs):
         obs = from_numpy_dt(obs)
         # TODO globalize std parameter
-        std = self.policy_net.std()
+        std = self.policy_net.std()[0]
 
         # - set up distributions - 
         mean_old = torch.tensor([0.0], device=device)
@@ -161,27 +164,37 @@ class PPOModel(object):
         target_penalty_contribution = \
             torch.tensor(penalty_contributions.item(), device=device)
 
-        while ((target_discrepancy - discrepancy) ** 2).item() > 1e-9:
+        loss_threshold = 1e-9
+
+        losses = np.array([loss_threshold + 1] * 3)
+
+        while losses.mean() > loss_threshold:
         #for _ in range(20):
             discrepancy_loss, penalty_contribution_loss, \
                 discrepancy, penalty_contributions = \
-                    get_discrepancy_and_penalty_contribution_losses(eps_down,\
-                    eps_up, dist, dist_old, target_discrepancy,\
-                    target_penalty_contribution, std)
+                get_discrepancy_and_penalty_contribution_losses(eps_down,\
+                eps_up, dist, dist_old, target_discrepancy,\
+                target_penalty_contribution, std)
 
             loss = discrepancy_loss + penalty_contribution_loss
             
-#            print("Loss: {0}".format(loss.item()))
-#            print("Discrepancy: {0}".format(discrepancy.item()))
-#            print("Low epsilon: {0}".format(eps_down.item()))
-#            print("High epsilon: {0}".format(eps_up.item()))
-#            print("Total penalty contributions: {0}".format(\
-#                penalty_contributions.item()))
-#            print()
+            # TODO add NaN check for eps
+            #print("Loss: {0}".format(loss.item()))
+            #print("Discrepancy: {0}".format(discrepancy.item()))
+            #print("Low epsilon: {0}".format(eps_down.item()))
+            #print("High epsilon: {0}".format(eps_up.item()))
+            #print("Total penalty contributions: {0}".format(\
+            #    penalty_contributions.item()))
+            #print()
+            assert (not math.isnan(eps_down.item())) and \
+                    (not math.isnan(eps_up.item()))
 
             optimizer.zero_grad()
             loss.backward()
             optimizer.step()
+
+            losses[0:-1] = losses[1:]
+            losses[-1] = loss.item()
 
         return eps_up.item(), eps_down.item()
         
