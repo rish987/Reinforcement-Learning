@@ -89,10 +89,10 @@ discrepancy, penalty_contributions = \
     get_discrepancy_and_penalty_contributions(g_eps_down, g_eps_up, g_dist, \
     g_dist_old) 
 
-g_target_discrepancy = torch.tensor(0.0)
+g_target_discrepancy = torch.tensor(0.02)
 g_target_penalty_contribution = torch.tensor(penalty_contributions.item())
 
-while ((g_target_discrepancy - discrepancy) ** 2).item() > 1e-9:
+for _ in range(20):
     discrepancy_loss, penalty_contribution_loss, \
         discrepancy, penalty_contributions = \
         get_discrepancy_and_penalty_contribution_losses(g_eps_down, g_eps_up, \

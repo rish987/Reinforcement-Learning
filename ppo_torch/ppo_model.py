@@ -86,10 +86,17 @@ class PPOModel(object):
     """
     Updates the parameters of the model according to the Adam framework.
     """
-    def adam_update(self, obs, acs, advs_gl, vals_gl):
+    def adam_update(self, obs, acs, advs_gl, vals_gl, handle_discrepancy):
         # clear gradients
         self.optimizer.zero_grad()
-        pol_loss, val_loss = self.loss(obs, acs, advs_gl, vals_gl)
+        if handle_discrepancy:
+            clip_param_up, clip_param_down = \
+                self.optimize_clip_params(obs)
+        else:
+            clip_param_up = self.clip_param_up
+            clip_param_down = self.clip_param_down
+        pol_loss, val_loss = self.loss(obs, acs, advs_gl, vals_gl, \
+            clip_param_up, clip_param_down)
         loss = pol_loss + val_loss
         loss.backward()
         self.optimizer.step()
@@ -129,7 +136,6 @@ class PPOModel(object):
         mean_old = torch.tensor([0.0], device=device)
         mean = torch.mean(torch.abs(self.policy_net(obs, False) -\
             self.policy_net_old(obs, False))).detach().view(1)
-        print(mean)
 
         dist_old = NormalUtil(mean_old, std)
         dist = NormalUtil(mean, std)
@@ -156,6 +162,7 @@ class PPOModel(object):
             torch.tensor(penalty_contributions.item(), device=device)
 
         while ((target_discrepancy - discrepancy) ** 2).item() > 1e-9:
+        #for _ in range(20):
             discrepancy_loss, penalty_contribution_loss, \
                 discrepancy, penalty_contributions = \
                     get_discrepancy_and_penalty_contribution_losses(eps_down,\
@@ -181,7 +188,7 @@ class PPOModel(object):
     """
     Calculates the total loss with the given batch data.
     """
-    def loss(self, obs, acs, advs_gl, vals_gl):
+    def loss(self, obs, acs, advs_gl, vals_gl, clip_param_up, clip_param_down):
         ratio = self.ratio(obs, acs)
 
         target = from_numpy_dt(advs_gl)
@@ -189,8 +196,8 @@ class PPOModel(object):
         
         # - calculate policy loss -
         surr1 = ratio * target
-        surr2 = torch.clamp(ratio, min=1.0 - self.clip_param_down, max=1.0 +\
-                self.clip_param_up) * target
+        surr2 = torch.clamp(ratio, min=1.0 - clip_param_down, max=1.0 +\
+                clip_param_up) * target
         pol_loss = -torch.mean(torch.min(surr1, surr2))
         # - 
 

@@ -122,7 +122,7 @@ def train(hidden_layer_size, num_hidden_layers, num_timesteps, \
             for batch in data.iterate_once(batch_size):
                 # get gradient
                 model.adam_update(batch[RO_OB], batch[RO_AC],\
-                    batch[RO_ADV_GL], batch[RO_VAL_GL])
+                    batch[RO_ADV_GL], batch[RO_VAL_GL], True)
         # - 
     
         # - gather graph data -
