@@ -58,7 +58,7 @@ g_lambda_ = 0.95
 # - 
 
 # TODO replace with passed-in environment
-g_env_name = "InvertedPendulum-v2"
+g_env_name = "Hopper-v2"
 
 """
 Trains a PPO agent according to given parameters and reports results.
@@ -310,7 +310,9 @@ def data_run(experimental=False):
     return get_average_data(all_data)
 
 def main():
+    print("Running control...")
     data_contr = data_run(experimental=False)
+    print("Running experimental...")
     data_exp = data_run(experimental=True)
     graph_comp_ret_ded(data_contr, data_exp)
 
