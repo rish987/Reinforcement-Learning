@@ -7,7 +7,7 @@ import torch.optim as optim
 import numpy as np
 from torch.distributions import normal
 def get_x_lim_mult(eps_mult):
-    return ((mean ** 2 + mean_old ** 2) + (2 * (std ** 2) * torch.log(1 +\
+    return ((mean ** 2 - mean_old ** 2) + (2 * (std ** 2) * torch.log(1 +\
             eps_mult))) / (2 * (mean - mean_old))
 
 def get_x_lim(eps, up):
@@ -17,18 +17,31 @@ def get_x_lim(eps, up):
 def get_discrepancy_and_penalty_contributions(eps_down, eps_up):
     x_up = get_x_lim(eps_up, True)
     x_down = get_x_lim(eps_down, False)
+    #print((eps_up).item())
+    #print((torch.exp(dist.log_prob(x_up) - dist_old.log_prob(x_up))).item())
 
     int_1 = dist_old.get_prob_between(x_down, x_up)
     int_2 = dist.get_prob_between(x_down, x_up)
     int_3 = dist_old.get_prob_above(x_up)
     int_4 = dist.get_prob_above(x_up)
+    #int_1 = dist_old.get_prob_between(x_up, x_down)
+    #int_2 = dist.get_prob_between(x_up, x_down)
+    #int_3 = dist_old.get_prob_below(x_up)
+    #int_4 = dist.get_prob_below(x_up)
+#    print(dist.get_prob_above(x_up) + (1 + eps_up) *\
+#            dist_old.get_prob_below(x_up))
+#    print(dist.get_prob_below(x_down) + (1 - eps_down) *\
+#            dist_old.get_prob_above(x_down))
+#    print(-eps_down - ((1 - eps_down) * (dist_old.get_prob_between(x_up,\
+#        x_down) + dist_old.get_prob_below(x_up))) \
+#        + dist.get_prob_between(x_up, x_down) + dist.get_prob_below(x_up))
 
     discrepancy = eps_down + ((1 - eps_down) * int_1) - \
                 (int_2 + ((eps_up + eps_down) * int_3))
 
     penalty_contributions = \
         (2 * int_4) - ((2 + eps_up - eps_down)* int_3) - eps_down - \
-        ((1 - eps_down) * int_1) + dist.get_prob_between(x_down, x_up)
+        ((1 - eps_down) * int_1) + int_2
 
     return discrepancy, penalty_contributions
 
@@ -55,8 +68,11 @@ class NormalUtil(normal.Normal):
 learning_rate = 0.01
 
 std = torch.tensor([1.0])
+mean_old_orig = torch.tensor([0.1])
+mean_orig = torch.tensor([-0.4])
+
 mean_old = torch.tensor([0.0])
-mean = torch.tensor([0.5])
+mean = torch.abs(mean_orig - mean_old_orig)
 
 dist_old = NormalUtil(mean_old, std)
 dist = NormalUtil(mean, std)

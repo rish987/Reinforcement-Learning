@@ -36,7 +36,8 @@ g_seed = 0
 # -- 
 
 # epsilon as described by Schulman et. al.
-g_clip_param = 0.2
+g_clip_param_up = 0.2
+g_clip_param_down = 0.2
 
 # -- SGD parameters --
 # number of training epochs per run
@@ -63,8 +64,8 @@ g_env_name = "InvertedPendulum-v2"
 Trains a PPO agent according to given parameters and reports results.
 """
 def train(hidden_layer_size, num_hidden_layers, num_timesteps, \
-    timesteps_per_rollout, seed, clip_param, num_epochs, alpha, \
-    batch_size, gamma, lambda_, env_name):
+    timesteps_per_rollout, seed, clip_param_up, clip_param_down, num_epochs, \
+    alpha, batch_size, gamma, lambda_, env_name):
     # - setup -
     # set up environment 
     env = gym.make(env_name)
@@ -75,7 +76,7 @@ def train(hidden_layer_size, num_hidden_layers, num_timesteps, \
 
     # create relevant PPO networks
     model = PPOModel(env, num_hidden_layers, hidden_layer_size, alpha,\
-            clip_param)
+            clip_param_up, clip_param_down)
 
     # total number of timesteps trained so far
     timesteps = 0
@@ -126,17 +127,21 @@ def train(hidden_layer_size, num_hidden_layers, num_timesteps, \
     
         # - gather graph data -
         ratio = model.ratio(rollout[RO_OB], rollout[RO_AC])
-        clip_param_tensor = torch.tensor(model.clip_param, device=device)
+        clip_param_up_opt, clip_param_down_opt = \
+            model.optimize_clip_params(rollout[RO_OB])
+        clip_param_up_tensor = torch.tensor(model.clip_param_up, device=device)
+        clip_param_down_tensor = \
+            torch.tensor(model.clip_param_down, device=device)
         avg_ratio_upclipped = torch.min(ratio, \
-            1 + clip_param_tensor).mean().item()
+            1 + clip_param_up_tensor).mean().item()
         avg_ratio_downclipped = torch.max(ratio, \
-            1 - clip_param_tensor).mean().item()
+            1 - clip_param_down_tensor).mean().item()
         avg_ratio = ratio.mean().item()
         avg_upclip_ded = avg_ratio - avg_ratio_upclipped
         avg_downclip_ded = avg_ratio_downclipped - avg_ratio
-        num_upclips = torch.sum(ratio > (1 + model.clip_param)).item()
-        num_downclips = torch.sum(ratio < (1 - model.clip_param)).item()
-        actual_clips = torch.sum(ratio > (1 + model.clip_param)).item()
+        num_upclips = torch.sum(ratio > (1 + clip_param_up_tensor)).item()
+        num_downclips = torch.sum(ratio < (1 - clip_param_down_tensor)).item()
+        actual_clips = torch.sum(ratio > (1 + clip_param_up_tensor)).item()
 
         graph_data[GD_AVG_NUM_UPCLIPS].append(num_upclips)
         graph_data[GD_AVG_NUM_DOWNCLIPS].append(num_downclips)
@@ -163,7 +168,8 @@ def global_run_seed(seed):
     return train(hidden_layer_size=g_hidden_layer_size, \
         num_hidden_layers=g_num_hidden_layers, num_timesteps=g_num_timesteps, \
         timesteps_per_rollout=g_timesteps_per_rollout, seed=seed, \
-        clip_param=g_clip_param, num_epochs=g_num_epochs, alpha=g_alpha, \
+        clip_param_up=g_clip_param_up, clip_param_down=g_clip_param_down, \
+        num_epochs=g_num_epochs, alpha=g_alpha, \
         batch_size=g_batch_size, gamma=g_gamma, lambda_=g_lambda_, \
         env_name=g_env_name)
 
@@ -184,7 +190,7 @@ def graph_ded_contr(data):
         color=(0.0, 0.0, 0.0), \
         label='$1 - E[r_{t, CLIP}^+]$')
     plt.plot(iterations, data[GD_AVG_DOWNCLIP_DED], linestyle='-', \
-        color=(0.0, 0.0, 0.0), \
+        color=(0.5, 0.5, 0.5), \
         label='$E[r_{t, CLIP}^-] - 1$')
 
     plt.legend()
@@ -243,7 +249,7 @@ def get_average_data(all_data):
     
 def data_run():
     all_data = []
-    for seed in range(3):
+    for seed in range(1):
         graph_data = global_run_seed(seed)
         all_data.append(graph_data)
 

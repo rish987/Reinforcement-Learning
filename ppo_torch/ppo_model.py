@@ -11,7 +11,7 @@ Encapsulates relevant PPO parameters and procedures.
 """
 class PPOModel(object):
     def __init__(self, env, num_hidden_layers, hidden_layer_size, alpha, \
-        clip_param):
+        clip_param_up, clip_param_down):
         # - set up networks -
         self.policy_net = \
             PolicyNetVar(env, num_hidden_layers, hidden_layer_size, False,
@@ -32,7 +32,8 @@ class PPOModel(object):
             GeneralNet(env, num_hidden_layers, hidden_layer_size, 1).to("cpu")
         # - 
 
-        self.clip_param = clip_param
+        self.clip_param_up = clip_param_up
+        self.clip_param_down = clip_param_down
 
         # set up optimizer
         self.optimizer = optim.Adam(self.trainable_parameters(), alpha)
@@ -110,6 +111,13 @@ class PPOModel(object):
             total_mag_sq += diffmag
 
         return total_mag_sq
+
+    """
+    Returns clip params, adjusted to minimize expected penalty contribution
+    discrepancy between positive and negative estimators, while maintaining the
+    same total expected penalty contributions. Uses absolute average distance
+    from the mean as 
+    """
         
     """
     Calculates the total loss with the given batch data.
@@ -122,8 +130,8 @@ class PPOModel(object):
         
         # - calculate policy loss -
         surr1 = ratio * target
-        surr2 = torch.clamp(ratio, min=1.0 - self.clip_param, max=1.0 +\
-                self.clip_param) * target
+        surr2 = torch.clamp(ratio, min=1.0 - self.clip_param_down, max=1.0 +\
+                self.clip_param_up) * target
         pol_loss = -torch.mean(torch.min(surr1, surr2))
         # - 
 
