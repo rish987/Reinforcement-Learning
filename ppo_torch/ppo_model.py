@@ -4,7 +4,9 @@
 # Description:
 # Class (PPOModel) that encapsulates relevant PPO parameters and procedures.
 from imports import *
-from misc_utils import from_numpy_dt, to_numpy_dt
+from misc_utils import from_numpy_dt, to_numpy_dt, NormalUtil, \
+    get_discrepancy_and_penalty_contributions, \
+    get_discrepancy_and_penalty_contribution_losses
 
 """
 Encapsulates relevant PPO parameters and procedures.
@@ -115,9 +117,66 @@ class PPOModel(object):
     """
     Returns clip params, adjusted to minimize expected penalty contribution
     discrepancy between positive and negative estimators, while maintaining the
-    same total expected penalty contributions. Uses absolute average distance
-    from the mean as 
+    same total expected penalty contributions. Uses 0 as the original mean and
+    the absolute average distance from the mean as the the new mean.
     """
+    def optimize_clip_params(self, obs):
+        obs = from_numpy_dt(obs)
+        # TODO globalize std parameter
+        std = self.policy_net.std()
+
+        # - set up distributions - 
+        mean_old = torch.tensor([0.0], device=device)
+        mean = torch.mean(torch.abs(self.policy_net(obs, False) -\
+            self.policy_net_old(obs, False))).detach().view(1)
+        print(mean)
+
+        dist_old = NormalUtil(mean_old, std)
+        dist = NormalUtil(mean, std)
+        # - 
+
+        # - set up optimizer - 
+        eps_up = torch.tensor(self.clip_param_up, requires_grad=True,\
+                device=device)
+        eps_down = torch.tensor(self.clip_param_down, requires_grad=True,\
+                device=device)
+        learnable_params = [eps_down, eps_up]
+        learning_rate = 0.01
+        optimizer = optim.Adam(learnable_params, learning_rate)
+        # - 
+
+        # get initial values
+        discrepancy, penalty_contributions = \
+            get_discrepancy_and_penalty_contributions(eps_down, eps_up, \
+            dist, dist_old, std) 
+
+        # set targets
+        target_discrepancy = torch.tensor(0.0, device=device)
+        target_penalty_contribution = \
+            torch.tensor(penalty_contributions.item(), device=device)
+
+        while ((target_discrepancy - discrepancy) ** 2).item() > 1e-9:
+            discrepancy_loss, penalty_contribution_loss, \
+                discrepancy, penalty_contributions = \
+                    get_discrepancy_and_penalty_contribution_losses(eps_down,\
+                    eps_up, dist, dist_old, target_discrepancy,\
+                    target_penalty_contribution, std)
+
+            loss = discrepancy_loss + penalty_contribution_loss
+            
+#            print("Loss: {0}".format(loss.item()))
+#            print("Discrepancy: {0}".format(discrepancy.item()))
+#            print("Low epsilon: {0}".format(eps_down.item()))
+#            print("High epsilon: {0}".format(eps_up.item()))
+#            print("Total penalty contributions: {0}".format(\
+#                penalty_contributions.item()))
+#            print()
+
+            optimizer.zero_grad()
+            loss.backward()
+            optimizer.step()
+
+        return eps_up.item(), eps_down.item()
         
     """
     Calculates the total loss with the given batch data.

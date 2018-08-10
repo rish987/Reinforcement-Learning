@@ -129,9 +129,9 @@ def train(hidden_layer_size, num_hidden_layers, num_timesteps, \
         ratio = model.ratio(rollout[RO_OB], rollout[RO_AC])
         clip_param_up_opt, clip_param_down_opt = \
             model.optimize_clip_params(rollout[RO_OB])
-        clip_param_up_tensor = torch.tensor(model.clip_param_up, device=device)
+        clip_param_up_tensor = torch.tensor(clip_param_up_opt, device=device)
         clip_param_down_tensor = \
-            torch.tensor(model.clip_param_down, device=device)
+            torch.tensor(clip_param_down_opt, device=device)
         avg_ratio_upclipped = torch.min(ratio, \
             1 + clip_param_up_tensor).mean().item()
         avg_ratio_downclipped = torch.max(ratio, \

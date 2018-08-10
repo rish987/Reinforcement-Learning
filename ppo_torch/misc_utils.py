@@ -87,3 +87,55 @@ Gets a detached numpy array from a tensor.
 """
 def to_numpy_dt(tensor):
     return tensor.cpu().detach().numpy()
+
+"""
+Normal distribution with some additional features.
+"""
+class NormalUtil(normal.Normal):
+    def get_prob_between(self, down, up):
+        return self.cdf(up) - self.cdf(down)
+
+    def get_prob_above(self, val):
+        return 1 - self.cdf(val)
+
+    def get_prob_below(self, val):
+        return self.cdf(val)
+
+def get_x_lim_mult(eps_mult, mean, mean_old, std):
+    return ((mean ** 2 - mean_old ** 2) + (2 * (std ** 2) * torch.log(1 +\
+            eps_mult))) / (2 * (mean - mean_old))
+
+def get_x_lim(eps, up, mean, mean_old, std):
+    mult = 1 if up else -1
+    return get_x_lim_mult(mult * eps, mean, mean_old, std)
+
+def get_discrepancy_and_penalty_contributions(eps_down, eps_up, dist, dist_old,
+    std):
+    x_up = get_x_lim(eps_up, True, dist.mean, dist_old.mean, std)
+    x_down = get_x_lim(eps_down, False, dist.mean, dist_old.mean, std)
+
+    int_1 = dist_old.get_prob_between(x_down, x_up)
+    int_2 = dist.get_prob_between(x_down, x_up)
+    int_3 = dist_old.get_prob_above(x_up)
+    int_4 = dist.get_prob_above(x_up)
+
+    discrepancy = eps_down + ((1 - eps_down) * int_1) - \
+                (int_2 + ((eps_up + eps_down) * int_3))
+
+    penalty_contributions = \
+        (2 * int_4) - ((2 + eps_up - eps_down)* int_3) - eps_down - \
+        ((1 - eps_down) * int_1) + int_2
+
+    return discrepancy, penalty_contributions
+
+def get_discrepancy_and_penalty_contribution_losses(eps_down, eps_up, dist,\
+        dist_old, target_discrepancy, target_penalty_contribution, std):
+    discrepancy, penalty_contributions =\
+        get_discrepancy_and_penalty_contributions(eps_down, eps_up, dist,\
+                dist_old, std)
+
+    discrepancy_loss = (discrepancy - target_discrepancy) ** 2
+    penalty_contribution_loss = (penalty_contributions -\
+            target_penalty_contribution) ** 2
+    return discrepancy_loss, penalty_contribution_loss, \
+        discrepancy, penalty_contributions
