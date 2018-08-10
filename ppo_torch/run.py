@@ -58,7 +58,7 @@ g_lambda_ = 0.95
 # - 
 
 # TODO replace with passed-in environment
-g_env_name = "Hopper-v2"
+g_env_name = "Swimmer-v2"
 
 """
 Trains a PPO agent according to given parameters and reports results.
@@ -168,27 +168,27 @@ def train(hidden_layer_size, num_hidden_layers, num_timesteps, \
         # - 
 
         #print(avg_num_upclips[-1], avg_num_downclips[-1], changes[-1])
-        print("Time Elapsed: {0}; Average Reward: {1}\n".format(timesteps, 
+        print("Time Elapsed: {0}; Average Reward: {1}".format(timesteps, 
             avg_ret))
     # - 
 
     return graph_data
 
-def global_run_seed(seed, experimental=False):
+def global_run_seed(seed, experimental=False, env_name=g_env_name):
     return train(hidden_layer_size=g_hidden_layer_size, \
         num_hidden_layers=g_num_hidden_layers, num_timesteps=g_num_timesteps, \
         timesteps_per_rollout=g_timesteps_per_rollout, seed=seed, \
         clip_param_up=g_clip_param_up, clip_param_down=g_clip_param_down, \
         num_epochs=g_num_epochs, alpha=g_alpha, \
         batch_size=g_batch_size, gamma=g_gamma, lambda_=g_lambda_, \
-        env_name=g_env_name, experimental=experimental)
+        env_name=env_name, experimental=experimental)
 
 def get_average_list_arr(list_arr):
     arr_len = min([len(arr) for arr in list_arr]);
     list_arr_cropped = [arr[:arr_len] for arr in list_arr]
     return np.average(np.array(list_arr_cropped), axis=0)
 
-def graph_comp_ret_ded(data_contr, data_exp):
+def graph_comp_ret_ded(data_contr, data_exp, graph_name):
     iterations = np.arange(data_contr[GD_CHG].shape[0]) + 1
 
     plt.figure()
@@ -229,8 +229,7 @@ def graph_comp_ret_ded(data_contr, data_exp):
 
     plt.tight_layout()
 
-    plt.savefig(GRAPH_OUT)
-    plt.show()
+    plt.savefig("graph_{0}.pgf".format(graph_name))
 
 def graph_ded_contr(data):
     iterations = np.arange(data[GD_CHG].shape[0]) + 1
@@ -301,20 +300,33 @@ def get_average_data(all_data):
     return avg_all_data
         
     
-def data_run(experimental=False):
+def data_run(experimental=False, env_name=g_env_name):
     all_data = []
     for seed in range(3):
-        graph_data = global_run_seed(0, experimental=experimental)
+        print("Run {0}:".format(seed + 1))
+        graph_data = global_run_seed(seed, experimental=experimental, \
+            env_name=env_name)
         all_data.append(graph_data)
+    print()
 
     return get_average_data(all_data)
 
+environments_all = ['InvertedPendulum-v2', 'Reacher-v2',\
+    'InvertedDoublePendulum-v2', 'HalfCheetah-v2', 'Hopper-v2',\
+    'Swimmer-v2', 'Walker2d-v2']
+
+environments_sub = [ 'HalfCheetah-v2', 'Hopper-v2',\
+    'Walker2d-v2']
+
 def main():
-    print("Running control...")
-    data_contr = data_run(experimental=False)
-    print("Running experimental...")
-    data_exp = data_run(experimental=True)
-    graph_comp_ret_ded(data_contr, data_exp)
+    env_name = g_env_name
+    for env_name in environments_sub:
+        print("Environment {0}".format(env_name))
+        print("Running control...")
+        data_contr = data_run(experimental=False, env_name=env_name)
+        print("Running experimental...")
+        data_exp = data_run(experimental=True, env_name=env_name)
+        graph_comp_ret_ded(data_contr, data_exp, graph_name=env_name)
 
 if __name__ == '__main__':
     main()

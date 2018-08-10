@@ -178,7 +178,6 @@ class PPOModel(object):
 
             loss = discrepancy_loss + penalty_contribution_loss
             
-            # TODO add NaN check for eps
             #print("Loss: {0}".format(loss.item()))
             #print("Discrepancy: {0}".format(discrepancy.item()))
             #print("Low epsilon: {0}".format(eps_down.item()))
@@ -230,9 +229,6 @@ class PolicyNetVar(object):
         self.device = device_in
         self.policy_net = GeneralNet(env, num_hidden_layers, \
             hidden_layer_size, env.action_space.shape[0]).to(self.device)
-        # TODO fix and put requires_grad as argument to Parameter call instead
-#        self.logstd = nn.Parameter(torch.zeros(env.action_space.shape[0], \
-#            requires_grad=(not fixed), device=self.device))
         self.logstd = nn.Parameter(torch.zeros(env.action_space.shape[0], \
             requires_grad=False, device=self.device), requires_grad=False)
 
