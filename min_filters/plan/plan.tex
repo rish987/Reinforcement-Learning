@@ -550,6 +550,62 @@
         \int_{x^{+}}^{\infty}p(\mu_{old}, x)dx\right)\\
         \\
     \end{align*}
+    \item Finding the addition of these two values
+    \begin{align*}
+        (1 - E[r_{t, CLIP}^{+}]) + (E[r_{t, CLIP}^{-}] - 1)
+        &=
+        \int_{x^{+}}^{\infty}
+        p(\mu, x)
+        dx -
+        (1 + \epsilon)
+        \int_{x^{+}}^{\infty}p(\mu_{old}, x)dx\\
+        &-
+        \epsilon
+        - 
+        (1 - \epsilon)
+        \left(
+        \int_{x^{-}}^{x^{+}}p(\mu_{old}, x)dx
+        +
+        \int_{x^{+}}^{\infty}p(\mu_{old}, x)dx
+        \right)\\
+        &+ 
+        \int_{x^{-}}^{x^{+}}p(\mu, x)dx 
+        + 
+        \int_{x^{+}}^{\infty}p(\mu, x)dx 
+        \\
+        &=
+        2\int_{x^{+}}^{\infty}
+        p(\mu, x)
+        dx -
+        (1 + \epsilon)
+        \int_{x^{+}}^{\infty}p(\mu_{old}, x)dx\\
+        &-
+        \epsilon
+        - 
+        (1 - \epsilon)
+        \left(
+        \int_{x^{-}}^{x^{+}}p(\mu_{old}, x)dx
+        +
+        \int_{x^{+}}^{\infty}p(\mu_{old}, x)dx
+        \right)\\
+        &+ 
+        \int_{x^{-}}^{x^{+}}p(\mu, x)dx \\
+        &=
+        2\left(\int_{x^{+}}^{\infty}
+        p(\mu, x)
+        dx -
+        \int_{x^{+}}^{\infty}p(\mu_{old}, x)dx\right)\\
+        &-
+        \epsilon
+        - 
+        (1 - \epsilon)
+        \int_{x^{-}}^{x^{+}}p(\mu_{old}, x)dx
+        \\
+        &+ 
+        \int_{x^{-}}^{x^{+}}p(\mu, x)dx 
+        \\
+        \\
+    \end{align*}
     
     \item Generalizing the results to two $\epsilon$:
     \begin{align*}
@@ -563,6 +619,19 @@
         &-\left(\int_{x^{-}}^{x^{+}}p(\mu, x)dx 
         +(\epsilon^+ + \epsilon^-)
         \int_{x^{+}}^{\infty}p(\mu_{old}, x)dx\right)\\
+        (1 - E[r_{t, CLIP}^{+}]) + (E[r_{t, CLIP}^{-}] - 1)
+        &=
+        2\int_{x^{+}}^{\infty}
+        p(\mu, x)
+        dx -
+        (2 + \epsilon^+ - \epsilon^-)
+        \int_{x^{+}}^{\infty}p(\mu_{old}, x)dx\\
+        &-
+        \epsilon^-
+        - 
+        (1 - \epsilon^-)
+        \int_{x^{-}}^{x^{+}}p(\mu_{old}, x)dx + 
+        \int_{x^{-}}^{x^{+}}p(\mu, x)dx
         \\
     \end{align*}
 
