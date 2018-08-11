@@ -14,8 +14,7 @@
 {
     \addplot[dashed] coordinates {(#1, 0) (#1, {gaussian(\std, \meanold)})};
 }
-\pgfmathsetmacro{\epsu}{0.9}
-\pgfmathsetmacro{\epsugr}{0.1}
+\pgfmathsetmacro{\epsu}{0.2}
 \pgfmathsetmacro{\epsd}{0.2}
 
 \pgfmathsetmacro{\meanold}{0}
@@ -163,62 +162,21 @@
         \pgfplotstablegetelem{\numsamplessub}{intdown}\of\inttable
         \pgfmathsetmacro{\expdiffdown}{\pgfplotsretval - 1}
 
-        \pgfmathsetmacro{\terma}{0}
-        \pgfmathsetmacro{\termb}{0}
-
-        \ifnum \valid = 1
-            \newprobtable{\meanold}{\down}{\up}
-            \pgfplotstablegetelem{\numsamplessub}{int}\of\probtable
-            \pgfmathsetmacro{\inta}{\pgfplotsretval}
-            \newprobtable{\mean}{\down}{\up}
-            \pgfplotstablegetelem{\numsamplessub}{int}\of\probtable
-            \pgfmathsetmacro{\intb}{\pgfplotsretval}
-            \newprobtable{\meanold}{\up}{\highx}
-            \pgfplotstablegetelem{\numsamplessub}{int}\of\probtable
-            \pgfmathsetmacro{\intc}{\pgfplotsretval}
-            \pgfmathsetmacro{\terma}{\epsd + ((1 - \epsd) * \inta)}
-            \pgfmathsetmacro{\termb}{\intb + ((\epsd + \epsu) * \intc)}
-
-            % TODO delete
-            %\newprobtable{\mean}{\up}{\highx}
-            %\pgfplotstablegetelem{\numsamplessub}{int}\of\probtable
-            %\pgfmathsetmacro{\inta}{\pgfplotsretval}
-            %\newprobtable{\meanold}{\up}{\highx}
-            %\pgfplotstablegetelem{\numsamplessub}{int}\of\probtable
-            %\pgfmathsetmacro{\intb}{\pgfplotsretval}
-            %\pgfmathsetmacro{\terma}{\inta - ((1 + \eps) * \intb)}
-
-            %\newprobtable{\meanold}{\lowx}{\down}
-            %\pgfplotstablegetelem{\numsamplessub}{int}\of\probtable
-            %\pgfmathsetmacro{\inta}{\pgfplotsretval}
-            %\newprobtable{\mean}{\lowx}{\down}
-            %\pgfplotstablegetelem{\numsamplessub}{int}\of\probtable
-            %\pgfmathsetmacro{\intb}{\pgfplotsretval}
-            %\pgfmathsetmacro{\termb}{((1 - \eps) * \inta) - \intb}
-            % delete TODO
-
-        \fi
-
         \begin{axis}[
           ybar,
           enlarge y limits=0.50,
-          enlarge x limits=0.20,
+          enlarge x limits=0.50,
           ymin=0, ymax=1,
-          symbolic x coords={1,2,3,4},
+          symbolic x coords={1,2},
           ytick={0, 0.5, 1},
           xtick=data,
-          xticklabels={$1 - E[r_{t, CLIP}^+]$, $E[r_{t, CLIP}^-] - 1$, term 1,
-          term 2},
-          x tick label style={rotate=45},
+          xticklabels={$1 - E[r_{t, CLIP}^+]$, $E[r_{t, CLIP}^-] - 1$},
           nodes near coords, 
           nodes near coords align={vertical},
           at={(0, -240)}
           ]
-          \addplot[fill=gray] coordinates {(1,\expdiffup) (2,\expdiffdown)
-          (3, \terma) (4, \termb)};
+          \addplot[fill=gray] coordinates {(1,\expdiffup) (2,\expdiffdown)};
         \end{axis}
     \end{tikzpicture}
-
-    %\pgfmathsetmacro{\epsu}{\epsu + \epsugr}
 }
 \end{document}
