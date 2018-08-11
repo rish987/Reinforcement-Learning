@@ -4,6 +4,7 @@
 import pickle
 import numpy as np
 import matplotlib.pyplot as plt;
+plt.rc('text', usetex=True)
 
 from misc_utils import \
     GD_CHG, GD_AVG_NUM_UPCLIPS, GD_AVG_NUM_DOWNCLIPS, GD_AVG_UPCLIP_DED,\

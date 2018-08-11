@@ -14,7 +14,6 @@ from misc_utils import \
     graph_data_keys
 from ppo_model import PPOModel
 from rollout import get_rollout
-plt.rc('text', usetex=True)
 
 # - hyperparameters -
 # -- neural network parameters --
@@ -35,8 +34,8 @@ g_seed = 0
 # -- 
 
 # epsilon as described by Schulman et. al.
-g_clip_param_up = 0.3
-g_clip_param_down = 0.3
+g_clip_param_up = 0.1
+g_clip_param_down = 0.1
 
 # -- SGD parameters --
 # number of training epochs per run
@@ -234,7 +233,6 @@ def main():
             pickle.dump(data_contr, file)
         with open("data_exp_{0}.dat".format(env_name), 'wb') as file:
             pickle.dump(data_exp, file)
-        #graph_comp_ret_ded(data_contr, data_exp, graph_name=env_name)
 
 if __name__ == '__main__':
     main()
