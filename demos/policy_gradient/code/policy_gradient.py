@@ -94,7 +94,7 @@ class Agent(object):
 env = gym.make('CartPole-v0')
 agent = Agent(env.action_space)
 
-MAX_EPISODES = 400;
+MAX_EPISODES = 50;
 RUNS = 10;
 MAX_STEPS = 200;
 
@@ -131,7 +131,7 @@ def MCPG_training_run(alpha):
 
         for t in range(MAX_STEPS):
             # optional - render episodes
-            # env.render();
+            env.render();
 
             action = agent.act(state, theta);
 
@@ -143,6 +143,8 @@ def MCPG_training_run(alpha):
 
             # save the next time's reward
             R.append(reward);
+
+            print("Episode: {0}\tTotal Reward: {1}".format(ep_i, np.sum(R)))
 
             if done:
                 break;
