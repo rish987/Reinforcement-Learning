@@ -23,6 +23,21 @@ graph_data_keys =\
 # -- 
 # - 
 
+output_file = "temp_out"
+
+def clear_out_file():
+    with open(output_file, 'w+') as file:
+        file.close()
+
+"""
+Prints a message the the terminal and saves it to an output file.
+"""
+def print_message(msg):
+    with open(output_file, 'a+') as file:
+        file.write(msg + "\n")
+    print(msg)
+
+
 """
 Sets the random seed for all relevant libraries, including a potential
 environment, to the specified value 'seed'.

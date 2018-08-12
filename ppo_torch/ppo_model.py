@@ -6,7 +6,7 @@
 from imports import *
 from misc_utils import from_numpy_dt, to_numpy_dt, NormalUtil, \
     get_discrepancy_and_penalty_contributions, \
-    get_discrepancy_and_penalty_contribution_losses
+    get_discrepancy_and_penalty_contribution_losses, print_message
 
 """
 Encapsulates relevant PPO parameters and procedures.
@@ -86,20 +86,11 @@ class PPOModel(object):
     """
     Updates the parameters of the model according to the Adam framework.
     """
-    def adam_update(self, obs, acs, advs_gl, vals_gl, handle_discrepancy,\
-            first_train):
+    def adam_update(self, obs, acs, advs_gl, vals_gl):
         # clear gradients
         self.optimizer.zero_grad()
-        if handle_discrepancy and not first_train:
-            clip_param_up, clip_param_down = \
-                self.optimize_clip_params(obs)
-            self.clip_param_up = clip_param_up
-            self.clip_param_down = clip_param_down
-        else:
-            clip_param_up = self.clip_param_up
-            clip_param_down = self.clip_param_down
-        pol_loss, val_loss = self.loss(obs, acs, advs_gl, vals_gl, \
-            clip_param_up, clip_param_down)
+        pol_loss, val_loss = self.loss(obs, acs, advs_gl, vals_gl)
+            
         loss = pol_loss + val_loss
         loss.backward()
         self.optimizer.step()
@@ -165,11 +156,18 @@ class PPOModel(object):
             torch.tensor(penalty_contributions.item(), device=device)
 
         loss_threshold = 1e-9
+        max_iters = 5000
+
+        num_iters = 0
 
         losses = np.array([loss_threshold + 1] * 3)
 
         while losses.mean() > loss_threshold:
         #for _ in range(20):
+            num_iters += 1
+            if num_iters > max_iters:
+                print_message("WARNING: reached iteration limit. Cutting "
+                    "evaluation short with loss={0}".format(losses.mean()))
             discrepancy_loss, penalty_contribution_loss, \
                 discrepancy, penalty_contributions = \
                 get_discrepancy_and_penalty_contribution_losses(eps_down,\
@@ -195,12 +193,15 @@ class PPOModel(object):
             losses[0:-1] = losses[1:]
             losses[-1] = loss.item()
 
-        return eps_up.item(), eps_down.item()
+        print (num_iters)
+
+        self.clip_param_up = eps_up.item()
+        self.clip_param_down = eps_down.item()
         
     """
     Calculates the total loss with the given batch data.
     """
-    def loss(self, obs, acs, advs_gl, vals_gl, clip_param_up, clip_param_down):
+    def loss(self, obs, acs, advs_gl, vals_gl):
         ratio = self.ratio(obs, acs)
 
         target = from_numpy_dt(advs_gl)
@@ -208,8 +209,8 @@ class PPOModel(object):
         
         # - calculate policy loss -
         surr1 = ratio * target
-        surr2 = torch.clamp(ratio, min=1.0 - clip_param_down, max=1.0 +\
-                clip_param_up) * target
+        surr2 = torch.clamp(ratio, min=1.0 - self.clip_param_down, max=1.0 +\
+                self.clip_param_up) * target
         pol_loss = -torch.mean(torch.min(surr1, surr2))
         # - 
 

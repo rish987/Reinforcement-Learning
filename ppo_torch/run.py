@@ -11,7 +11,7 @@ from misc_utils import \
     GRAPH_OUT,\
     GD_CHG, GD_AVG_NUM_UPCLIPS, GD_AVG_NUM_DOWNCLIPS, GD_AVG_UPCLIP_DED,\
     GD_AVG_DOWNCLIP_DED, GD_EP_RETS, GD_TIMESTEPS,\
-    graph_data_keys
+    graph_data_keys, print_message, clear_out_file
 from ppo_model import PPOModel
 from rollout import get_rollout
 
@@ -55,11 +55,6 @@ g_gamma = 0.99
 g_lambda_ = 0.95
 # -- 
 # - 
-
-def print_message(msg):
-    with open("temp_out", 'a+') as file:
-        file.write(msg + "\n")
-    print(msg)
 
 # TODO replace with passed-in environment
 g_env_name = "Swimmer-v2"
@@ -125,14 +120,14 @@ def train(hidden_layer_size, num_hidden_layers, num_timesteps, \
         # - SGD training -
         # go through all epochs
         for e in range(num_epochs):
+            print("Epoch {0}".format(e))
             # go through all randomly organized batches
             for batch in data.iterate_once(batch_size):
                 # get gradient
                 model.adam_update(batch[RO_OB], batch[RO_AC],\
-                    batch[RO_ADV_GL], batch[RO_VAL_GL], experimental, \
-                    first_train)
-                if first_train:
-                    first_train = False
+                    batch[RO_ADV_GL], batch[RO_VAL_GL])
+            if (experimental):
+                model.optimize_clip_params(rollout[RO_OB])
         # - 
     
         # - gather graph data -
@@ -221,6 +216,16 @@ def data_run(experimental=False, env_name=g_env_name):
 
     return get_average_data(all_data)
 
+def save_data_run(experimental, env_name):
+    run_type = "experimental" if experimental else "control"
+    file_type = "exp" if experimental else "contr"
+
+    print_message("Running {0}...".format(run_type))
+    data = data_run(experimental=experimental, env_name=env_name)
+    with open("data/smallbatch/eps_{0}/data_{1}_{2}.dat".\
+        format(int(init_eps * 10), file_type , env_name), 'wb') as file:
+        pickle.dump(data, file)
+
 environments_all = ['InvertedPendulum-v2', 'Reacher-v2',\
     'InvertedDoublePendulum-v2', 'HalfCheetah-v2', 'Hopper-v2',\
     'Swimmer-v2', 'Walker2d-v2']
@@ -230,6 +235,8 @@ environments_sub = ['InvertedPendulum-v2',\
     'Swimmer-v2', 'Walker2d-v2']
 
 def main():
+    clear_out_file()
+
     env_name = g_env_name
     for init_eps in (0.4, 0.3, 0.2, 0.1):
         print_message("Epsilon={0}".format(init_eps))
@@ -237,16 +244,9 @@ def main():
         g_clip_param_down = init_eps
         for env_name in environments_sub:
             print_message("Environment {0}".format(env_name))
-            print_message("Running control...")
-            data_contr = data_run(experimental=False, env_name=env_name)
-            print_message("Running experimental...")
-            data_exp = data_run(experimental=True, env_name=env_name)
-            with open("data/smallbatch/eps_{0}/data_contr_{1}.dat".\
-                format(int(init_eps * 10), env_name), 'wb') as file:
-                pickle.dump(data_contr, file)
-            with open("data/smallbatch/eps_{0}/data_exp_{1}.dat".\
-                format(int(init_eps * 10), env_name), 'wb') as file:
-                pickle.dump(data_exp, file)
+
+            save_data_run(False, env_name)
+            save_data_run(True, env_name)
 
 if __name__ == '__main__':
     main()
