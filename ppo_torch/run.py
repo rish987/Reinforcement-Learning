@@ -28,22 +28,23 @@ g_num_hidden_layers = 2
 g_num_timesteps = 200000
 # number of timesteps in a single rollout (simulated trajectory with fixed
 # parameters)
-g_timesteps_per_rollout = 2048 * 6
+#g_timesteps_per_rollout = 2048 * 6
+g_timesteps_per_rollout = 2048
 # random seed
 g_seed = 0
 # -- 
 
 # epsilon as described by Schulman et. al.
-g_clip_param_up = 0.4
-g_clip_param_down = 0.4
+g_clip_param_up = 0.2
+g_clip_param_down = 0.2
 
 # -- SGD parameters --
 # number of training epochs per run
-g_num_epochs = 20
+g_num_epochs = 10
 # adam learning rate
 g_alpha = 3e-4
 # number of randomly selected timesteps to use in a single parameter update
-g_batch_size = 1024
+g_batch_size = 64
 # --
 
 # -- GAE parameters --
@@ -54,6 +55,11 @@ g_gamma = 0.99
 g_lambda_ = 0.95
 # -- 
 # - 
+
+def print_message(msg):
+    with open("temp_out", 'a+') as file:
+        file.write(msg + "\n")
+    print(msg)
 
 # TODO replace with passed-in environment
 g_env_name = "Swimmer-v2"
@@ -165,12 +171,14 @@ def train(hidden_layer_size, num_hidden_layers, num_timesteps, \
         graph_data[GD_CHG].append(change)
         # - 
 
-        #print(avg_num_upclips[-1], avg_num_downclips[-1], changes[-1])
-        print("Time Elapsed: {0}; Average Reward: {1}".format(timesteps, 
-            avg_ret))
+        #print_message(avg_num_upclips[-1], avg_num_downclips[-1], changes[-1])
+        status = "Time Elapsed: {0}; Average Reward: {1}".format(timesteps, 
+            avg_ret)
+        print_message(status)
     # - 
 
     return graph_data
+
 
 def global_run_seed(seed, experimental=False, env_name=g_env_name):
     return train(hidden_layer_size=g_hidden_layer_size, \
@@ -205,11 +213,11 @@ def get_average_data(all_data):
 def data_run(experimental=False, env_name=g_env_name):
     all_data = []
     for seed in range(3):
-        print("Run {0}:".format(seed + 1))
+        print_message("Run {0}:".format(seed + 1))
         graph_data = global_run_seed(seed, experimental=experimental, \
             env_name=env_name)
         all_data.append(graph_data)
-    print()
+    print_message("\n")
 
     return get_average_data(all_data)
 
@@ -223,16 +231,22 @@ environments_sub = ['InvertedPendulum-v2',\
 
 def main():
     env_name = g_env_name
-    for env_name in environments_sub:
-        print("Environment {0}".format(env_name))
-        print("Running control...")
-        data_contr = data_run(experimental=False, env_name=env_name)
-        print("Running experimental...")
-        data_exp = data_run(experimental=True, env_name=env_name)
-        with open("data_contr_{0}.dat".format(env_name), 'wb') as file:
-            pickle.dump(data_contr, file)
-        with open("data_exp_{0}.dat".format(env_name), 'wb') as file:
-            pickle.dump(data_exp, file)
+    for init_eps in (0.4, 0.3, 0.2, 0.1):
+        print_message("Epsilon={0}".format(init_eps))
+        g_clip_param_up = init_eps
+        g_clip_param_down = init_eps
+        for env_name in environments_sub:
+            print_message("Environment {0}".format(env_name))
+            print_message("Running control...")
+            data_contr = data_run(experimental=False, env_name=env_name)
+            print_message("Running experimental...")
+            data_exp = data_run(experimental=True, env_name=env_name)
+            with open("data/smallbatch/eps_{0}/data_contr_{1}.dat".\
+                format(int(init_eps * 10), env_name), 'wb') as file:
+                pickle.dump(data_contr, file)
+            with open("data/smallbatch/eps_{0}/data_exp_{1}.dat".\
+                format(int(init_eps * 10), env_name), 'wb') as file:
+                pickle.dump(data_exp, file)
 
 if __name__ == '__main__':
     main()
