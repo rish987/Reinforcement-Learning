@@ -34,8 +34,8 @@ g_seed = 0
 # -- 
 
 # epsilon as described by Schulman et. al.
-g_clip_param_up = 0.2
-g_clip_param_down = 0.2
+g_clip_param_up = 0.4
+g_clip_param_down = 0.4
 
 # -- SGD parameters --
 # number of training epochs per run

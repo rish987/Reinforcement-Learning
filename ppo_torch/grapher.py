@@ -113,9 +113,9 @@ environments_sub = ['InvertedPendulum-v2',\
 
 def main():
     for env_name in environments_sub:
-        with open("data_contr_{0}.dat".format(env_name), 'rb') as file:
+        with open("data/eps_4_data/data_contr_{0}.dat".format(env_name), 'rb') as file:
             data_contr = pickle.load(file)
-        with open("data_exp_{0}.dat".format(env_name), 'rb') as file:
+        with open("data/eps_4_data/data_exp_{0}.dat".format(env_name), 'rb') as file:
             data_exp = pickle.load(file)
         graph_comp_ret_ded(data_contr, data_exp, graph_name=env_name)
 
