@@ -126,8 +126,8 @@ def train(hidden_layer_size, num_hidden_layers, num_timesteps, \
                 # get gradient
                 model.adam_update(batch[RO_OB], batch[RO_AC],\
                     batch[RO_ADV_GL], batch[RO_VAL_GL])
-            if (experimental):
-                model.optimize_clip_params(rollout[RO_OB])
+                if (experimental):
+                    model.optimize_clip_params(rollout[RO_OB])
         # - 
     
         # - gather graph data -
@@ -175,11 +175,12 @@ def train(hidden_layer_size, num_hidden_layers, num_timesteps, \
     return graph_data
 
 
-def global_run_seed(seed, experimental=False, env_name=g_env_name):
+def global_run_seed(seed, experimental=False, env_name=g_env_name, \
+    init_eps=0.2):
     return train(hidden_layer_size=g_hidden_layer_size, \
         num_hidden_layers=g_num_hidden_layers, num_timesteps=g_num_timesteps, \
         timesteps_per_rollout=g_timesteps_per_rollout, seed=seed, \
-        clip_param_up=g_clip_param_up, clip_param_down=g_clip_param_down, \
+        clip_param_up=init_eps, clip_param_down=init_eps, \
         num_epochs=g_num_epochs, alpha=g_alpha, \
         batch_size=g_batch_size, gamma=g_gamma, lambda_=g_lambda_, \
         env_name=env_name, experimental=experimental)
@@ -205,25 +206,26 @@ def get_average_data(all_data):
     return avg_all_data
         
     
-def data_run(experimental=False, env_name=g_env_name):
+def data_run(experimental=False, env_name=g_env_name, init_eps=0.2):
     all_data = []
     for seed in range(3):
         print_message("Run {0}:".format(seed + 1))
         graph_data = global_run_seed(seed, experimental=experimental, \
-            env_name=env_name)
+            env_name=env_name, init_eps=init_eps)
         all_data.append(graph_data)
     print_message("\n")
 
     return get_average_data(all_data)
 
-def save_data_run(experimental, env_name):
+def save_data_run(experimental, env_name, init_eps):
     run_type = "experimental" if experimental else "control"
     file_type = "exp" if experimental else "contr"
 
     print_message("Running {0}...".format(run_type))
-    data = data_run(experimental=experimental, env_name=env_name)
-    with open("data/smallbatch/eps_{0}/data_{1}_{2}.dat".\
-        format(int(init_eps * 10), file_type , env_name), 'wb') as file:
+    data = data_run(experimental=experimental, env_name=env_name,\
+        init_eps=init_eps)
+    with open("data/smallbatch/eps_{0}_data/data_{1}_{2}.dat".\
+        format(int(init_eps * 10), file_type , env_name), 'wb+') as file:
         pickle.dump(data, file)
 
 environments_all = ['InvertedPendulum-v2', 'Reacher-v2',\
@@ -238,15 +240,15 @@ def main():
     clear_out_file()
 
     env_name = g_env_name
-    for init_eps in (0.4, 0.3, 0.2, 0.1):
+    for init_eps in (0.3, 0.2, 0.1):
         print_message("Epsilon={0}".format(init_eps))
         g_clip_param_up = init_eps
         g_clip_param_down = init_eps
         for env_name in environments_sub:
             print_message("Environment {0}".format(env_name))
 
-            save_data_run(False, env_name)
-            save_data_run(True, env_name)
+            #save_data_run(False, env_name, init_eps)
+            save_data_run(True, env_name, init_eps)
 
 if __name__ == '__main__':
     main()
