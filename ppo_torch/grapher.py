@@ -11,13 +11,14 @@ from misc_utils import \
     GD_AVG_DOWNCLIP_DED, GD_EP_RETS, GD_TIMESTEPS,\
     graph_data_keys
 
-def graph_comp_ret_ded(data_contr, data_exp, graph_name):
+def graph_comp_ret_ded(data_contr, data_exp, graph_name, eps, ):
     iterations = np.arange(data_contr[GD_CHG].shape[0]) + 1
 
     plt.figure()
     plt.subplot(211)
     plt.ylabel("Average Return")
     plt.xlabel("Timestep")
+    plt.ylim(env_to_range[graph_name])
     plt.title("Performance")
 
     plt.plot(data_contr[GD_TIMESTEPS], data_contr[GD_EP_RETS], linestyle='-', \
@@ -52,7 +53,7 @@ def graph_comp_ret_ded(data_contr, data_exp, graph_name):
 
     plt.tight_layout()
 
-    plt.savefig("experiment_{0}.pgf".format(graph_name))
+    plt.savefig("../notes/grapher/smallbatch/eps_{0}/experiment_{1}.pgf".format(eps, graph_name))
 
 def graph_ded_contr(data):
     iterations = np.arange(data[GD_CHG].shape[0]) + 1
@@ -110,14 +111,21 @@ def graph_chgs_and_clips(data):
 environments_sub = ['InvertedPendulum-v2',\
     'InvertedDoublePendulum-v2', 'Hopper-v2',\
     'Swimmer-v2', 'Walker2d-v2']
+env_to_range = {
+        'InvertedPendulum-v2':(0, 1000),\
+            'InvertedDoublePendulum-v2':(0, 200), 'Hopper-v2':(0, 1300),\
+            'Swimmer-v2':(0, 60), 'Walker2d-v2':(0, 610)
+        }
 
 def main():
-    for env_name in environments_sub:
-        with open("data/smallbatch/eps_1_data/data_contr_{0}.dat".format(env_name), 'rb') as file:
-            data_contr = pickle.load(file)
-        with open("data/smallbatch/eps_1_data/data_exp_{0}.dat".format(env_name), 'rb') as file:
-            data_exp = pickle.load(file)
-        graph_comp_ret_ded(data_contr, data_exp, graph_name=env_name)
+    for eps in [1, 2, 3, 4]:
+        print(eps)
+        for env_name in environments_sub:
+            with open("data/smallbatch/eps_{0}_data/data_contr_{1}.dat".format(eps, env_name), 'rb') as file:
+                data_contr = pickle.load(file)
+            with open("data/smallbatch/eps_{0}_data/data_exp_{1}.dat".format(eps, env_name), 'rb') as file:
+                data_exp = pickle.load(file)
+            graph_comp_ret_ded(data_contr, data_exp, graph_name=env_name, eps=eps)
 
 if __name__ == '__main__':
     main()

@@ -240,7 +240,7 @@ def main():
     clear_out_file()
 
     env_name = g_env_name
-    for init_eps in (0.3, 0.2, 0.1):
+    for init_eps in (0.4, 0.3, 0.2, 0.1):
         print_message("Epsilon={0}".format(init_eps))
         g_clip_param_up = init_eps
         g_clip_param_down = init_eps
