@@ -28,8 +28,8 @@ g_num_hidden_layers = 2
 g_num_timesteps = 200000
 # number of timesteps in a single rollout (simulated trajectory with fixed
 # parameters)
-#g_timesteps_per_rollout = 2048 * 6
-g_timesteps_per_rollout = 2048
+g_timesteps_per_rollout = 2048 * 6
+#g_timesteps_per_rollout = 2048
 # random seed
 g_seed = 0
 # -- 
@@ -40,11 +40,13 @@ g_clip_param_down = 0.2
 
 # -- SGD parameters --
 # number of training epochs per run
-g_num_epochs = 10
+g_num_epochs = 20
+#g_num_epochs = 10
 # adam learning rate
 g_alpha = 3e-4
 # number of randomly selected timesteps to use in a single parameter update
-g_batch_size = 64
+g_batch_size = 1024
+#g_batch_size = 64
 # --
 
 # -- GAE parameters --
@@ -170,6 +172,13 @@ def train(hidden_layer_size, num_hidden_layers, num_timesteps, \
         status = "Time Elapsed: {0}; Average Reward: {1}".format(timesteps, 
             avg_ret)
         print_message(status)
+        print("Average Upclip Deduction: {0}; "
+            "Average Downclip Deduction: {1}".format(avg_upclip_ded, \
+            avg_downclip_ded))
+        print("Epsilon Up: {0}; Epsilon Down: {1}".format(model.clip_param_up, \
+            model.clip_param_down))
+        status = "Average Upclip Deduction: {0}; "
+            "Average Downclip Deduction: {1}".format(timesteps, avg_ret)
     # - 
 
     return graph_data
@@ -232,15 +241,17 @@ environments_all = ['InvertedPendulum-v2', 'Reacher-v2',\
     'InvertedDoublePendulum-v2', 'HalfCheetah-v2', 'Hopper-v2',\
     'Swimmer-v2', 'Walker2d-v2']
 
-environments_sub = ['InvertedPendulum-v2',\
-    'InvertedDoublePendulum-v2', 'Hopper-v2',\
-    'Swimmer-v2', 'Walker2d-v2']
+#environments_sub = ['InvertedPendulum-v2',\
+#    'InvertedDoublePendulum-v2', 'Hopper-v2',\
+#    'Swimmer-v2', 'Walker2d-v2'] #TODO revert
+environments_sub = [ 'Swimmer-v2' ]
 
 def main():
     clear_out_file()
 
     env_name = g_env_name
-    for init_eps in (0.4, 0.3, 0.2, 0.1):
+    #for init_eps in (0.4, 0.3, 0.2, 0.1): #TODO revert
+    for init_eps in (0.4):
         print_message("Epsilon={0}".format(init_eps))
         g_clip_param_up = init_eps
         g_clip_param_down = init_eps
