@@ -40,6 +40,9 @@ class PPOModel(object):
         # set up optimizer
         self.optimizer = optim.Adam(self.trainable_parameters(), alpha)
 
+        std = self.policy_net.std()[0]
+        self.dist_old = NormalUtil(torch.tensor([0.0], device=device), std)
+
     """
     Sets the old policy to have the same parameters as the new policy.
     """
@@ -127,11 +130,9 @@ class PPOModel(object):
         std = self.policy_net.std()[0]
 
         # - set up distributions - 
-        mean_old = torch.tensor([0.0], device=device)
         mean = torch.mean(torch.abs(self.policy_net(obs, False) -\
             self.policy_net_old(obs, False))).detach().view(1)
 
-        dist_old = NormalUtil(mean_old, std)
         dist = NormalUtil(mean, std)
         # - 
 
@@ -141,14 +142,14 @@ class PPOModel(object):
         eps_down = torch.tensor(self.clip_param_down, requires_grad=True,\
                 device=device)
         learnable_params = [eps_down, eps_up]
-        learning_rate = 0.01
+        learning_rate = 0.0001
         optimizer = optim.Adam(learnable_params, learning_rate)
         # - 
 
         # get initial values
         discrepancy, penalty_contributions = \
             get_discrepancy_and_penalty_contributions(eps_down, eps_up, \
-            dist, dist_old, std) 
+            dist, self.dist_old, std) 
 
         # set targets
         target_discrepancy = torch.tensor(0.0, device=device)
@@ -168,10 +169,11 @@ class PPOModel(object):
             if num_iters > max_iters:
                 print_message("WARNING: reached iteration limit. Cutting "
                     "evaluation short with loss={0}".format(losses.mean()))
+                break;
             discrepancy_loss, penalty_contribution_loss, \
                 discrepancy, penalty_contributions = \
                 get_discrepancy_and_penalty_contribution_losses(eps_down,\
-                eps_up, dist, dist_old, target_discrepancy,\
+                eps_up, dist, self.dist_old, target_discrepancy,\
                 target_penalty_contribution, std)
 
             loss = discrepancy_loss + penalty_contribution_loss
