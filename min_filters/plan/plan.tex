@@ -13,7 +13,7 @@
 \newcommand{\gn}{-1}
 \newcommand{\gaax}[3]{
     \begin{axis}[ 
-		title=#2,
+        title=#2,
         title style = {font=\scriptsize},
         xlabel=$r_t(\theta)$,
         ymin=#1 - 1, ymax=#1 + 1,
@@ -87,17 +87,17 @@
         \min\left(r_t(\theta)\hat{A}_t, \text{clip}
         (r_t(\theta), 1 - \epsilon, 1 + \epsilon)\hat{A}_t\right) \right]
     \end{align*}
-	where 
-	$r_t(\theta) = 
-	\frac
-	{\pi_{\theta}(a_t | s_t)}
-	{\pi_{\theta_{old}} (a_t | s_t)}$
+    where 
+    $r_t(\theta) = 
+    \frac
+    {\pi_{\theta}(a_t | s_t)}
+    {\pi_{\theta_{old}} (a_t | s_t)}$
     and $\hat{A}_t$ is the generalized
     advantage estimator. For simplicity, let $r_t(\theta) = r_t$. 
     $\hat{A}_t$ can be replaced with a number of other
     ``$\gamma$-just'' estimators that must satisfy certain conditions
     \cite{gae}
-	.  
+    .  
     Generalizing $\hat{A}_t$ to these estimators, which will be
     denoted $\hat{G}_t$, yields:
     \begin{align*}

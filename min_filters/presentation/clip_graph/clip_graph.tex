@@ -1,0 +1,68 @@
+\documentclass[tikz]{standalone}
+\setlength\parindent{0pt}
+
+\usepackage{pgfplots}
+\usepackage{amsthm, amsmath, amssymb, verbatim, enumerate, mathtools, algorithm}
+\usepackage{pgf}
+\usepackage[font=small, skip=0pt]{caption}
+\usepackage{hyperref}
+\def\labelitemi{--}
+\pgfplotsset{compat=newest}
+\newcommand{\eps}{0.2}
+\newcommand{\gp}{1}
+\newcommand{\gn}{-1}
+\newcommand{\gaax}[4]{
+    \begin{axis}[ 
+        title=#2,
+        title style = {font=\scriptsize},
+        xlabel=$r_t(\theta)$,
+        ymin=#1 - 1, ymax=#1 + 1,
+        xmin=0, xmax=2,
+        width=7cm,height=5cm,
+        legend pos = #3,
+        legend style = {font=\tiny},
+        xtick = {1, 1 + \eps, 1 - \eps},
+        xtick pos = bottom,
+        xticklabels = {$1$, $1 + \epsilon$, $1 - \epsilon$},
+        ytick pos = bottom,
+        ytick = {#1},
+        yticklabels = {$A$},
+        at={(#4, 0)}
+    ] 
+}
+\tikzset{declare function={
+    mfg(\x,\m) =
+        ((\x<=1 - \eps) * (1 - \eps) +
+        and(\x>1 - \eps, \x<=1 + \eps) * (\x) +
+        (\x>1 + \eps) * (1 + \eps)) * \m;
+    rg(\x,\m) = \x * \m;
+    c(\x,\m) = 
+        min(((\x<=1 - \eps) * (1 - \eps) +
+        and(\x>1 - \eps, \x<=1 + \eps) * (\x) +
+        (\x>1 + \eps) * (1 + \eps)) * \m
+        ,\x * \m);
+}}
+\newcommand{\minproc}[2]{
+    \begin{tikzpicture}
+        \gaax{#1}{
+            {$r_tA_t$ and $m(r_t)A_t$}
+        }{#2}{0}
+        \addplot [color=red, mark=none, samples=200] {mfg(x, #1)}; 
+        \addplot [color=blue, mark=none, samples=200] {rg(x, #1)}; 
+        \draw [dashed] (0,#1) -| (1,#1 - 1);
+        \legend{$r_tA_t$, {$m(r_t)A_t$}}
+        \end{axis}
+
+        \gaax{#1}{
+            {$\min(r_tA_t, m(r_t)A_t)$}
+        }{#2}{270}
+        \addplot [color=black, mark=none, samples=200] {c(x, #1)}; 
+        \draw [dashed] (0,#1) -| (1,#1 - 1);
+        \end{axis}
+    \end{tikzpicture}
+}
+
+\begin{document}
+    \minproc{\gp}{north west}
+    \minproc{\gn}{north east}
+\end{document}
