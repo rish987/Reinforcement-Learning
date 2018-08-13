@@ -165,7 +165,7 @@
             \max\left(r_t, \text{clip}
             (r_t, 1 - \epsilon)\right)
         \end{align*}
-        \item We know that:
+        \item Because $\mathbb{E}_t[r_t] = 1$, we know that:
         \begin{align*}
             \mathbb{E}_t[r_{t, CLIP}^+] &< 1\\
             \mathbb{E}_t[r_{t, CLIP}^-] &> 1\\
@@ -206,22 +206,135 @@
     \end{center}
     %NOTE mention increasing discrepancy
     \framebreak
+    This discrepancy also appears empirically:
+    \begin{center}
+        \scalebox{0.6}{\input{exp_deds.pgf}}\\
+    \end{center}
+    \framebreak
     \begin{itemize}
         \item The discrepancy between positive and negative penalty
             contributions is unintentional and highly dependent on the shape of
             the distribution.
         \item The goal of this project is to investigate the effects of
             controlling this discrepancy directly.
-    \end{itemize}<++>
+    \end{itemize}
 \end{frame}
 
 \begin{frame}[noframenumbering, allowframebreaks]{Idea}
+    \begin{itemize}
+        \item In the gaussian example, we can precisely calculate the
+            discrepancy at a particular state using the equation:
+        \scriptsize
+        \begin{align*}
+            (1 - E[r_{t, CLIP}^{+}]) - (E[r_{t, CLIP}^{-}] - 1)
+            &=
+            \epsilon
+            + 
+            (1 - \epsilon)
+            \int_{x^{-}}^{x^{+}}p(\mu_{old}, x)dx
+            \\
+            &-\left(\int_{x^{-}}^{x^{+}}p(\mu, x)dx 
+            +2\epsilon
+            \int_{x^{+}}^{\infty}p(\mu_{old}, x)dx\right)\\
+        \end{align*}
+        \normalsize
+        where
+        \begin{align*}
+            x^{+} &=
+            \frac{(\mu^2 - \mu_{old}^2)
+                + 2\sigma^2\ln\left(1 + \epsilon\right)}
+                {2(\mu - \mu_{old})}
+        \end{align*}
+        and
+        \begin{align*}
+            x^{-} &=
+            \frac{(\mu^2 - \mu_{old}^2)
+                + 2\sigma^2\ln\left(1 - \epsilon\right)}
+                {2(\mu - \mu_{old})}
+        \end{align*}
+        \framebreak
+        \item If we want to minimize this using $\epsilon$, this equation
+            doesn't give us very much control.
+        \item Generalizing to two $\epsilon$ by redefining the clipping
+            function as $\text{clip} (r_t, 1 - \epsilon^-, 1 + \epsilon^+)$:
+        \scriptsize
+        \begin{align*}
+            (1 - E[r_{t, CLIP}^{+}]) - (E[r_{t, CLIP}^{-}] - 1)
+            &=
+            \epsilon^-
+            + 
+            (1 - \epsilon^-)
+            \int_{x^{-}}^{x^{+}}p(\mu_{old}, x)dx
+            \\
+            &-\left(\int_{x^{-}}^{x^{+}}p(\mu, x)dx 
+            +(\epsilon^+ + \epsilon^-)
+            \int_{x^{+}}^{\infty}p(\mu_{old}, x)dx\right)\\
+        \end{align*}
+        % NOTE increasing e^- will tend to increase the value, and decreasing
+        % e^+ will tend to decrease the value
+        \normalsize
+        \item We can also define the total expected penalty contributions:
+        \tiny
+        \begin{align*}
+            (1 - E[r_{t, CLIP}^{+}]) + (E[r_{t, CLIP}^{-}] - 1)
+            &=
+            2\int_{x^{+}}^{\infty}
+            p(\mu, x)
+            dx -
+            (2 + \epsilon^+ - \epsilon^-)
+            \int_{x^{+}}^{\infty}p(\mu_{old}, x)dx\\
+            &-
+            \epsilon^-
+            - 
+            (1 - \epsilon^-)
+            \int_{x^{-}}^{x^{+}}p(\mu_{old}, x)dx + 
+            \int_{x^{-}}^{x^{+}}p(\mu, x)dx
+            \\
+        \end{align*}
+        \normalsize
+        \framebreak
+        \item The new algorithm is identical to PPO, except we use two
+            $\epsilon$, and at the end of every model update, we optimize
+            $\epsilon^-$ and $\epsilon^+$ so that:
+        \begin{itemize}
+            \item $(1 - E[r_{t, CLIP}^{+}]) - (E[r_{t, CLIP}^{-}] - 1)$ is
+                minimized.
+            \item $(1 - E[r_{t, CLIP}^{+}]) + (E[r_{t, CLIP}^{-}] - 1)$ remains
+                the same.
+        \end{itemize}
+    \end{itemize}
 \end{frame}
 
 \begin{frame}[noframenumbering, allowframebreaks]{Results}
+    \begin{itemize}
+        \item Overall, we observed approximately the same performance or modest
+            improvements.
+        \item The optimization was always successful in reducing the empirical
+            discrepancy.
+    \end{itemize}
+    \framebreak
+    Example: Walker2d-v2 environment
+    \scalebox{0.6}{\input{experiment_Walker2d-v2.pgf}}\\
+    Example: Hopper-v2 environment
+    \scalebox{0.6}{\input{experiment_Hopper-v2.pgf}}\\
+    Example: Swimmer-v2 environment
+    \scalebox{0.6}{\input{experiment_Swimmer-v2.pgf}}\\
+    % NOTE discrepancy decrease, and the new discrepancy is between the old one
+    % because we generally want to keep the sum the same
+    % NOTE discrepancy decrease, and the new discrepancy is between the old one
+    % because we generally want to keep the sum the same
 \end{frame}
 
 \begin{frame}[noframenumbering, allowframebreaks]{Future Directions}
+    Some questions:
+    \begin{itemize}
+        \item Is there a simpler, problem-independent way to control the
+            discrepancy?
+        \item How does increasing the discrepancy in some direction affect
+            performance?
+        \item How, specifically, does the expected discrepancy relate to the
+            actual penalty difference?
+    \end{itemize}
 \end{frame}
 
 \end{document}
