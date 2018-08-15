@@ -129,8 +129,8 @@ def train(hidden_layer_size, num_hidden_layers, num_timesteps, \
                 # get gradient
                 model.adam_update(batch[RO_OB], batch[RO_AC],\
                     batch[RO_ADV_GL], batch[RO_VAL_GL])
-                #if (experimental):
-                #    model.optimize_clip_params(rollout[RO_OB])
+                if (experimental):
+                    model.optimize_clip_params(rollout[RO_OB])
         # - 
     
         # - gather graph data -
@@ -268,24 +268,22 @@ environments_all = ['InvertedPendulum-v2', 'Reacher-v2',\
     'InvertedDoublePendulum-v2', 'HalfCheetah-v2', 'Hopper-v2',\
     'Swimmer-v2', 'Walker2d-v2']
 
-#environments_sub = ['InvertedPendulum-v2',\
-#    'InvertedDoublePendulum-v2', 'Hopper-v2',\
-#    'Swimmer-v2', 'Walker2d-v2'] #TODO revert
-environments_sub = [ 'Swimmer-v2' ]
+environments_sub = ['InvertedPendulum-v2',\
+    'InvertedDoublePendulum-v2', 'Hopper-v2',\
+    'Swimmer-v2', 'Walker2d-v2'] 
 
 def main():
     clear_out_file()
 
     env_name = g_env_name
-    #for init_eps in (0.4, 0.3, 0.2, 0.1): #TODO revert
-    for init_eps in [0.4]:
+    for init_eps in [0.4, 0.3, 0.2, 0.1]:
         print_message("Epsilon={0}".format(init_eps))
         g_clip_param_up = init_eps
         g_clip_param_down = init_eps
         for env_name in environments_sub:
             print_message("Environment {0}".format(env_name))
 
-            #save_data_run(False, env_name, init_eps)
+            save_data_run(False, env_name, init_eps, "largebatch")
             save_data_run(True, env_name, init_eps, "largebatch")
 
 if __name__ == '__main__':

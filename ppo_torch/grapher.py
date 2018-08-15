@@ -8,14 +8,15 @@ plt.rc('text', usetex=True)
 
 from misc_utils import \
     GD_CHG, GD_AVG_NUM_UPCLIPS, GD_AVG_NUM_DOWNCLIPS, GD_AVG_UPCLIP_DED,\
-    GD_AVG_DOWNCLIP_DED, GD_EP_RETS, GD_TIMESTEPS,\
+    GD_AVG_DOWNCLIP_DED, GD_EP_RETS, GD_TIMESTEPS, GD_ACT_UPCLIP_DED,\
+    GD_ACT_DOWNCLIP_DED,\
     graph_data_keys
 
 def graph_comp_ret_ded(data_contr, data_exp, graph_name, eps, ):
     iterations = np.arange(data_contr[GD_CHG].shape[0]) + 1
 
-    plt.figure()
-    plt.subplot(211)
+    plt.figure(figsize=(5, 10))
+    plt.subplot(311)
     plt.ylabel("Average Return")
     plt.xlabel("Timestep")
     plt.ylim(env_to_range[graph_name])
@@ -30,7 +31,7 @@ def graph_comp_ret_ded(data_contr, data_exp, graph_name, eps, ):
 
     plt.legend()
 
-    plt.subplot(212)
+    plt.subplot(312)
     plt.ylabel("Proportional Contribution")
     plt.xlabel("Number of Iterations")
     plt.title("Expected Penalty Contributions")
@@ -48,6 +49,27 @@ def graph_comp_ret_ded(data_contr, data_exp, graph_name, eps, ):
     plt.plot(iterations, data_exp[GD_AVG_DOWNCLIP_DED], linestyle='--', \
         color=(0.5, 0.5, 0.5), \
         label='$E[r_{t, CLIP}^-] - 1 $, experimental')
+
+    plt.legend()
+    
+    plt.subplot(313)
+    plt.ylabel("Loss Contribution")
+    plt.xlabel("Number of Iterations")
+    plt.title("Actual Penalty Contributions")
+
+    plt.plot(iterations, data_contr[GD_ACT_UPCLIP_DED], linestyle='-', \
+        color=(0.0, 0.0, 0.0), \
+        label='Positive Penalty Contribution, control')
+    plt.plot(iterations, data_contr[GD_ACT_DOWNCLIP_DED], linestyle='-', \
+        color=(0.5, 0.5, 0.5), \
+        label='Negative Penalty Contribution, control')
+
+    plt.plot(iterations, data_exp[GD_ACT_UPCLIP_DED], linestyle='--', \
+        color=(0.0, 0.0, 0.0), \
+        label='Positive Penalty Contribution, experimental')
+    plt.plot(iterations, data_exp[GD_ACT_DOWNCLIP_DED], linestyle='--', \
+        color=(0.5, 0.5, 0.5), \
+        label='Negative Penalty Contribution, experimental')
 
     plt.legend()
 
@@ -111,6 +133,8 @@ def graph_chgs_and_clips(data):
 environments_sub = ['InvertedPendulum-v2',\
     'InvertedDoublePendulum-v2', 'Hopper-v2',\
     'Swimmer-v2', 'Walker2d-v2']
+
+# y-axis range for printing results from environment
 env_to_range = {
         'InvertedPendulum-v2':(0, 1000),\
             'InvertedDoublePendulum-v2':(0, 200), 'Hopper-v2':(0, 1300),\
@@ -118,7 +142,7 @@ env_to_range = {
         }
 
 def main():
-    for eps in [1, 2, 3, 4]:
+    for eps in [4, 3, 2, 1]:
         print(eps)
         for env_name in environments_sub:
             with open("data/largebatch/eps_{0}_data/data_contr_{1}.dat".format(eps, env_name), 'rb') as file:
