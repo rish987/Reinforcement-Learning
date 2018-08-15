@@ -53,7 +53,7 @@ def graph_comp_ret_ded(data_contr, data_exp, graph_name, eps, ):
 
     plt.tight_layout()
 
-    plt.savefig("../notes/grapher/smallbatch/eps_{0}/experiment_{1}.pgf".format(eps, graph_name))
+    plt.savefig("../notes/grapher/largebatch/eps_{0}/experiment_{1}.pgf".format(eps, graph_name))
 
 def graph_ded_contr(data):
     iterations = np.arange(data[GD_CHG].shape[0]) + 1
@@ -121,9 +121,9 @@ def main():
     for eps in [1, 2, 3, 4]:
         print(eps)
         for env_name in environments_sub:
-            with open("data/smallbatch/eps_{0}_data/data_contr_{1}.dat".format(eps, env_name), 'rb') as file:
+            with open("data/largebatch/eps_{0}_data/data_contr_{1}.dat".format(eps, env_name), 'rb') as file:
                 data_contr = pickle.load(file)
-            with open("data/smallbatch/eps_{0}_data/data_exp_{1}.dat".format(eps, env_name), 'rb') as file:
+            with open("data/largebatch/eps_{0}_data/data_exp_{1}.dat".format(eps, env_name), 'rb') as file:
                 data_exp = pickle.load(file)
             graph_comp_ret_ded(data_contr, data_exp, graph_name=env_name, eps=eps)
 
