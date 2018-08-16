@@ -1,9 +1,17 @@
 \documentclass[letterpaper,twocolumn,10pt]{article}
 \usepackage{epsfig,endnotes}
 \usepackage{hyperref}
-\usepackage{algorithm2e}
+\usepackage{amsthm, amsmath, amssymb, verbatim, enumerate, mathtools, algorithm}
+\usepackage{algorithm}
+\usepackage{algpseudocode}
 \usepackage{relsize}
 \usepackage{usenix}
+\makeatletter
+\newcommand{\algmargin}{\the\ALG@thistlm}
+\makeatother
+\algnewcommand{\parState}[1]{\State%
+    \parbox[t]{\dimexpr\linewidth-\algmargin} {\strut\hangindent=\algorithmicindent \hangafter=1 #1\strut}}
+
 \begin{document}
 
 %don't want date printed
@@ -30,7 +38,7 @@ University of California, San Diego
 \subsection*{Abstract}
 Proximal Policy Optimization (PPO), a policy gradient algorithm drawing closely
 from the theory supporting Trust Region Policy Optimization (TRPO), has emerged
-as one of the most effective tools in reinforcement learning problems. PPO
+as one of the most effective tools in reinforcement learning (RL) problems. PPO
 makes use of a loss function with a clipped importance sampling ratio using a
 single parameter $\epsilon$. Although PPO shows promising empirical
 performance, it is vulnerable to problem-specific imbalances in its handling of
@@ -42,7 +50,49 @@ can improve the overall performance of PPO.
 
 \section{Introduction}
 
+Note: This paper assumes knowledge of the common terms and concepts in
+reinforcement learning (see [TODO cite sutton and barto]).
 
+Among current reinforcement learning (RL) algorithms, Policy Gradient methods
+have seen significant success at a wide range of tasks. These methods seek to
+learn performant policy distributions directly, rather than learning a value
+function to indirectly guide the policy [TODO cite paper covering policy
+gradient]. Using a policy $\pi_{\theta}(a)$ parameterized by $\theta$, these
+algorithms have the general form: 
+\begin{algorithm}[H]
+    \caption{Generic Policy Gradient}
+    \begin{algorithmic}
+        \State Initialize $\theta$ arbitrarily
+        \While{True}\Comment{loop forever}
+            \State $\theta_{old} \gets \theta$
+            \parState{$rollout \gets (s, a, r)$ from multiple\\
+            episodes following $\pi_{\theta}$}
+            % NOTE explain what a rollout is and what (s, a, r) are
+			\parState{Set $\theta$ to maximize the loss function $L(rollout,
+				\theta, \theta_{old})$}
+        \EndWhile
+    \end{algorithmic}
+\end{algorithm}
+Within this framework, the choice of a loss function is the key to an effective
+algorithm, and current research in reinforcement learning focuses particularly
+on finding new ways to represent this loss. A recent innovation in policy
+gradient methods is Trust Region Policy Optimization (TRPO), which approximates
+the updates perfomed by an agent that uses the following loss function to 
+guarantee monotonic improvement in the policy's performance:
+    $$L_{\theta_{old}}(\theta) 
+    - CD_{KL}^{max}(\theta, \theta_{old})
+    $$
+, where $C$ is a constant,
+$$L_{\theta_{old}}(\theta) =
+            \mathbb{E}_t \left[ 
+            \frac
+            {\pi_{\theta}(a_t | s_t)}
+            {\pi_{\theta_{old}} (a_t | s_t)}
+            A_t
+            \right]$$, and $A_t$ is the advantage at time $t$ [TODO cite].
+In TRPO implementations, this loss function results in relatively
+small step sizes, so in practice the penalty term $CD_{KL}^{max}(\theta,
+\theta_{old})$
 
 More fascinating text. Features\endnote{Remember to use endnotes, not footnotes!} galore, plethora of promises.\\
 
