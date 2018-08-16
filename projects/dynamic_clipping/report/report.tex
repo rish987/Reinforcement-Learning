@@ -79,9 +79,10 @@ on finding new ways to represent this loss. A recent innovation in policy
 gradient methods is Trust Region Policy Optimization (TRPO), which approximates
 the updates perfomed by an agent that uses the following loss function to 
 guarantee monotonic improvement in the policy's performance:
-    $$L_{\theta_{old}}(\theta) 
+\begin{equation}
+    L_{\theta_{old}}(\theta) 
     - CD_{KL}^{max}(\theta, \theta_{old})
-    $$
+\end{equation}
 , where $C$ is a constant,
 $$L_{\theta_{old}}(\theta) =
             \mathbb{E}_t \left[ 
@@ -92,7 +93,7 @@ $$L_{\theta_{old}}(\theta) =
             \right]$$, and $A_t$ is the advantage at time $t$ [TODO cite].
 In TRPO implementations, this loss function results in relatively
 small step sizes, so in practice the penalty term $CD_{KL}^{max}(\theta,
-\theta_{old})$
+\theta_{old})$ is removed from 
 
 More fascinating text. Features\endnote{Remember to use endnotes, not footnotes!} galore, plethora of promises.\\
 
