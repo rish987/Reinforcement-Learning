@@ -10,7 +10,8 @@ from misc_utils import \
     RO_EP_LEN, RO_EP_RET, RO_OB, RO_AC, RO_ADV_GL, RO_VAL_GL, \
     GRAPH_OUT,\
     GD_CHG, GD_AVG_NUM_UPCLIPS, GD_AVG_NUM_DOWNCLIPS, GD_AVG_UPCLIP_DED,\
-    GD_AVG_DOWNCLIP_DED, GD_EP_RETS, GD_TIMESTEPS,\
+    GD_AVG_DOWNCLIP_DED, GD_EP_RETS, GD_TIMESTEPS, GD_ACT_UPCLIP_DED,\
+    GD_ACT_DOWNCLIP_DED,\
     graph_data_keys, print_message, clear_out_file
 from ppo_model import PPOModel
 from rollout import get_rollout
@@ -151,6 +152,31 @@ def train(hidden_layer_size, num_hidden_layers, num_timesteps, \
         actual_clips = torch.sum(ratio > (1 + clip_param_up_tensor)).item()
         avg_ret = np.mean(rollout[RO_EP_RET][-100:])
 
+        adv_gl_tensor = torch.tensor(rollout[RO_ADV_GL], \
+            dtype=torch.float, device=device)
+
+        ratio_pos = ratio[adv_gl_tensor > 0]
+        ratio_neg = ratio[adv_gl_tensor < 0]
+        adv_gl_tensor_pos = adv_gl_tensor[adv_gl_tensor > 0]
+        adv_gl_tensor_neg = adv_gl_tensor[adv_gl_tensor < 0]
+
+        clipped_ratio_pos = torch.clamp(ratio_pos, \
+            max=(1 + model.clip_param_up))
+        clipped_ratio_neg = torch.clamp(ratio_neg, \
+            min=(1 - model.clip_param_down))
+
+        unclipped_pos_loss = (ratio_pos * adv_gl_tensor_pos).sum()
+        clipped_pos_loss = (clipped_ratio_pos * adv_gl_tensor_pos).sum()
+        unclipped_neg_loss = (ratio_neg * adv_gl_tensor_neg).sum()
+        clipped_neg_loss = (clipped_ratio_neg * adv_gl_tensor_neg).sum()
+        
+        clipped_loss = (clipped_pos_loss + clipped_neg_loss) / \
+        ratio.shape[0]
+
+        # actual penalty contributions of positive/negative clipping
+        act_upclip_ded = unclipped_pos_loss - clipped_pos_loss
+        act_downclip_ded = unclipped_neg_loss - clipped_neg_loss
+
         # update total timesteps traveled so far
         timesteps += np.sum(rollout[RO_EP_LEN])
 
@@ -160,6 +186,8 @@ def train(hidden_layer_size, num_hidden_layers, num_timesteps, \
         graph_data[GD_AVG_NUM_DOWNCLIPS].append(num_downclips)
         graph_data[GD_AVG_UPCLIP_DED].append(avg_upclip_ded)
         graph_data[GD_AVG_DOWNCLIP_DED].append(avg_downclip_ded)
+        graph_data[GD_ACT_UPCLIP_DED].append(act_upclip_ded)
+        graph_data[GD_ACT_DOWNCLIP_DED].append(act_downclip_ded)
 
         # standard deviation after update
         change = model.policy_change()
@@ -172,13 +200,11 @@ def train(hidden_layer_size, num_hidden_layers, num_timesteps, \
         status = "Time Elapsed: {0}; Average Reward: {1}".format(timesteps, 
             avg_ret)
         print_message(status)
-        print("Average Upclip Deduction: {0}; "
-            "Average Downclip Deduction: {1}".format(avg_upclip_ded, \
-            avg_downclip_ded))
-        print("Epsilon Up: {0}; Epsilon Down: {1}".format(model.clip_param_up, \
-            model.clip_param_down))
-        status = "Average Upclip Deduction: {0}; "
-            "Average Downclip Deduction: {1}".format(timesteps, avg_ret)
+        #print_message("Average Upclip Deduction: {0}; "
+        #    "Average Downclip Deduction: {1}".format(avg_upclip_ded, \
+        #    avg_downclip_ded))
+        #print_message("Epsilon Up: {0}; Epsilon Down: {1}".format(model.clip_param_up, \
+        #    model.clip_param_down))
     # - 
 
     return graph_data
@@ -226,40 +252,39 @@ def data_run(experimental=False, env_name=g_env_name, init_eps=0.2):
 
     return get_average_data(all_data)
 
-def save_data_run(experimental, env_name, init_eps):
+def save_data_run(experimental, env_name, init_eps, foldername):
     run_type = "experimental" if experimental else "control"
     file_type = "exp" if experimental else "contr"
 
     print_message("Running {0}...".format(run_type))
     data = data_run(experimental=experimental, env_name=env_name,\
         init_eps=init_eps)
-    with open("data/smallbatch/eps_{0}_data/data_{1}_{2}.dat".\
-        format(int(init_eps * 10), file_type , env_name), 'wb+') as file:
+    with open("data/{0}/eps_{1}_data/data_{2}_{3}.dat".\
+        format(foldername, int(init_eps * 10), file_type , env_name), 'wb+') \
+        as file:
         pickle.dump(data, file)
 
 environments_all = ['InvertedPendulum-v2', 'Reacher-v2',\
     'InvertedDoublePendulum-v2', 'HalfCheetah-v2', 'Hopper-v2',\
     'Swimmer-v2', 'Walker2d-v2']
 
-#environments_sub = ['InvertedPendulum-v2',\
-#    'InvertedDoublePendulum-v2', 'Hopper-v2',\
-#    'Swimmer-v2', 'Walker2d-v2'] #TODO revert
-environments_sub = [ 'Swimmer-v2' ]
+environments_sub = ['InvertedPendulum-v2',\
+    'InvertedDoublePendulum-v2', 'Hopper-v2',\
+    'Swimmer-v2', 'Walker2d-v2'] 
 
 def main():
     clear_out_file()
 
     env_name = g_env_name
-    #for init_eps in (0.4, 0.3, 0.2, 0.1): #TODO revert
-    for init_eps in (0.4):
+    for init_eps in [0.4, 0.3, 0.2, 0.1]:
         print_message("Epsilon={0}".format(init_eps))
         g_clip_param_up = init_eps
         g_clip_param_down = init_eps
         for env_name in environments_sub:
             print_message("Environment {0}".format(env_name))
 
-            #save_data_run(False, env_name, init_eps)
-            save_data_run(True, env_name, init_eps)
+            save_data_run(False, env_name, init_eps, "largebatch")
+            save_data_run(True, env_name, init_eps, "largebatch")
 
 if __name__ == '__main__':
     main()

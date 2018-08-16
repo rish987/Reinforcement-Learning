@@ -16,10 +16,13 @@ GD_AVG_UPCLIP_DED = "avg_upclip_ded"
 GD_AVG_DOWNCLIP_DED = "avg_downclip_ded"
 GD_EP_RETS = "ep_rets"
 GD_TIMESTEPS = "timesteps"
+GD_ACT_UPCLIP_DED = "act_upclip_ded"
+GD_ACT_DOWNCLIP_DED = "act_downclip_ded"
 
 graph_data_keys =\
     [GD_CHG, GD_AVG_NUM_UPCLIPS, GD_AVG_NUM_DOWNCLIPS, GD_AVG_UPCLIP_DED,\
-    GD_AVG_DOWNCLIP_DED, GD_EP_RETS, GD_TIMESTEPS]
+    GD_AVG_DOWNCLIP_DED, GD_EP_RETS, GD_TIMESTEPS, GD_ACT_UPCLIP_DED,\
+    GD_ACT_DOWNCLIP_DED]
 # -- 
 # - 
 
@@ -34,7 +37,7 @@ Prints a message the the terminal and saves it to an output file.
 """
 def print_message(msg):
     with open(output_file, 'a+') as file:
-        file.write(msg + "\n")
+        file.write("{0}\n".format(msg))
     print(msg)
 
 
