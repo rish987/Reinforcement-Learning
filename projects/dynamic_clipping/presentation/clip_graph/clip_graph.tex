@@ -4,7 +4,7 @@
 \usepackage{pgfplots}
 \usepackage{amsthm, amsmath, amssymb, verbatim, enumerate, mathtools, algorithm}
 \usepackage{pgf}
-\usepackage[font=small, skip=0pt]{caption}
+\usepackage[font=normal, skip=0pt]{caption}
 \usepackage{hyperref}
 \def\labelitemi{--}
 \pgfplotsset{compat=newest}
@@ -14,7 +14,6 @@
 \newcommand{\gaax}[4]{
     \begin{axis}[ 
         title=#2,
-        title style = {font=\scriptsize},
         xlabel=$r_t(\theta)$,
         ymin=#1 - 1, ymax=#1 + 1,
         xmin=0, xmax=2,

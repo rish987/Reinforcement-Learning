@@ -1,0 +1,90 @@
+\documentclass[letterpaper,twocolumn,10pt]{article}
+\usepackage{epsfig,endnotes}
+\usepackage{hyperref}
+\usepackage{algorithm2e}
+\usepackage{relsize}
+\usepackage{usenix}
+\begin{document}
+
+%don't want date printed
+\date{}
+
+%make title bold and 14 pt font (Latex default is non-bold, 16 pt)
+\title{\Large \bf Proximal Policy Optimization with Dynamic Clipping}
+
+\author{
+{\rm Student: Rishikesh Vaishnav}\\
+University of California, San Diego
+\and
+{\rm Mentor: Sicun Gao, Ph.D}\\
+University of California, San Diego
+}
+
+\maketitle
+
+% Use the following at camera-ready time to suppress page numbers.
+% Comment it out when you first submit the paper for review.
+\thispagestyle{empty}
+
+
+\subsection*{Abstract}
+Proximal Policy Optimization (PPO), a policy gradient algorithm drawing closely
+from the theory supporting Trust Region Policy Optimization (TRPO), has emerged
+as one of the most effective tools in reinforcement learning problems. PPO
+makes use of a loss function with a clipped importance sampling ratio using a
+single parameter $\epsilon$. Although PPO shows promising empirical
+performance, it is vulnerable to problem-specific imbalances in its handling of
+positive and negative advantages. We investigate one such imbalance, addressing
+a discrepancy in expected penalty contributions of positive and negative
+estimators. By precisely calculating this discrepancy and minimizing it before
+each iteration, we empirically demonstrate that eliminating this discrepancy
+can improve the overall performance of PPO.
+
+\section{Introduction}
+
+
+
+More fascinating text. Features\endnote{Remember to use endnotes, not footnotes!} galore, plethora of promises.\\
+
+\section{This is Another Section}
+
+Some embedded literal typset code might 
+look like the following :
+
+{\tt \small
+\begin{verbatim}
+#include <iostream>
+using namespace std;
+main()
+{
+cout << "Hello world \n";
+return 0;
+}
+
+\end{verbatim}
+}
+
+Now we're going to cite somebody.  Watch for the cite tag.
+Here it comes~\cite{ppo}.  
+
+Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.
+
+Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.
+
+Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.
+
+Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.
+
+\theendnotes
+
+\begin{thebibliography}{9}
+\bibitem{ppo} 
+\url{https://arxiv.org/abs/1707.06347}
+\bibitem{gae} 
+\url{https://arxiv.org/abs/1506.02438}
+\bibitem{trpo} 
+\url{https://arxiv.org/abs/1502.05477}
+\end{thebibliography}
+
+
+\end{document}
