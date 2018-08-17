@@ -121,22 +121,25 @@ class NormalUtil(normal.Normal):
     def get_prob_below(self, val):
         return self.cdf(val)
 
-def get_x_lim_mult(eps_mult, mean, mean_old, std):
-    return ((mean ** 2 - mean_old ** 2) + (2 * (std ** 2) * torch.log(1 +\
-            eps_mult))) / (2 * (mean - mean_old))
+def get_x_lim_mult(eps_mult, mean, std):
+    return ((mean ** 2) + (2 * (std ** 2) * torch.log(1 +\
+            eps_mult))) / (2 * mean)
 
-def get_x_lim(eps, up, mean, mean_old, std):
+def get_x_lim(eps, up, mean, std):
     mult = 1 if up else -1
-    return get_x_lim_mult(mult * eps, mean, mean_old, std)
+    return get_x_lim_mult(mult * eps, mean, std)
 
-def get_discrepancy_and_penalty_contributions(eps_down, eps_up, dist, dist_old,
-    std):
-    x_up = get_x_lim(eps_up, True, dist.mean, dist_old.mean, std)
-    x_down = get_x_lim(eps_down, False, dist.mean, dist_old.mean, std)
 
-    int_1 = dist_old.get_prob_between(x_down, x_up)
+#TODO change with std change
+dist_zero = NormalUtil(torch.tensor([0.0], device=device), 1)
+
+def get_discrepancy_and_penalty_contributions(eps_down, eps_up, dist, std):
+    x_up = get_x_lim(eps_up, True, dist.mean, std)
+    x_down = get_x_lim(eps_down, False, dist.mean, std)
+
+    int_1 = dist_zero.get_prob_between(x_down, x_up)
     int_2 = dist.get_prob_between(x_down, x_up)
-    int_3 = dist_old.get_prob_above(x_up)
+    int_3 = dist_zero.get_prob_above(x_up)
     int_4 = dist.get_prob_above(x_up)
 
     discrepancy = eps_down + ((1 - eps_down) * int_1) - \
@@ -149,10 +152,9 @@ def get_discrepancy_and_penalty_contributions(eps_down, eps_up, dist, dist_old,
     return discrepancy, penalty_contributions
 
 def get_discrepancy_and_penalty_contribution_losses(eps_down, eps_up, dist,\
-        dist_old, target_discrepancy, target_penalty_contribution, std):
+        target_discrepancy, target_penalty_contribution, std):
     discrepancy, penalty_contributions =\
-        get_discrepancy_and_penalty_contributions(eps_down, eps_up, dist,\
-                dist_old, std)
+        get_discrepancy_and_penalty_contributions(eps_down, eps_up, dist, std)
 
     discrepancy_loss = (discrepancy - target_discrepancy) ** 2
     penalty_contribution_loss = (penalty_contributions -\

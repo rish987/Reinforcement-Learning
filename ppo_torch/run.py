@@ -26,11 +26,11 @@ g_num_hidden_layers = 2
 
 # -- run parameters --
 # number of timesteps to train over
-g_num_timesteps = 200000
+g_num_timesteps = 300000
 # number of timesteps in a single rollout (simulated trajectory with fixed
 # parameters)
-g_timesteps_per_rollout = 2048 * 6
-#g_timesteps_per_rollout = 2048
+#g_timesteps_per_rollout = 2048 * 6
+g_timesteps_per_rollout = 2048
 # random seed
 g_seed = 0
 # -- 
@@ -41,13 +41,13 @@ g_clip_param_down = 0.2
 
 # -- SGD parameters --
 # number of training epochs per run
-g_num_epochs = 20
-#g_num_epochs = 10
+#g_num_epochs = 20
+g_num_epochs = 10
 # adam learning rate
 g_alpha = 3e-4
 # number of randomly selected timesteps to use in a single parameter update
-g_batch_size = 1024
-#g_batch_size = 64
+#g_batch_size = 1024
+g_batch_size = 64
 # --
 
 # -- GAE parameters --
@@ -121,16 +121,20 @@ def train(hidden_layer_size, num_hidden_layers, num_timesteps, \
         first_train = True
 
         # - SGD training -
+        first = True
         # go through all epochs
         for e in range(num_epochs):
             print("Epoch {0}".format(e))
             # go through all randomly organized batches
             for batch in data.iterate_once(batch_size):
+                if (experimental and (not first)):
+                    model.optimize_clip_params(batch[RO_OB])
                 # get gradient
                 model.adam_update(batch[RO_OB], batch[RO_AC],\
                     batch[RO_ADV_GL], batch[RO_VAL_GL])
-                if (experimental):
-                    model.optimize_clip_params(rollout[RO_OB])
+                first = False
+
+        model.decay_clip_param_learning_rate(1.00)
         # - 
     
         # - gather graph data -
@@ -243,7 +247,7 @@ def get_average_data(all_data):
     
 def data_run(experimental=False, env_name=g_env_name, init_eps=0.2):
     all_data = []
-    for seed in range(3):
+    for seed in range(6):
         print_message("Run {0}:".format(seed + 1))
         graph_data = global_run_seed(seed, experimental=experimental, \
             env_name=env_name, init_eps=init_eps)
@@ -268,7 +272,7 @@ environments_all = ['InvertedPendulum-v2', 'Reacher-v2',\
     'InvertedDoublePendulum-v2', 'HalfCheetah-v2', 'Hopper-v2',\
     'Swimmer-v2', 'Walker2d-v2']
 
-environments_sub = ['InvertedPendulum-v2',\
+environments_sub = [\
     'InvertedDoublePendulum-v2', 'Hopper-v2',\
     'Swimmer-v2', 'Walker2d-v2'] 
 
@@ -283,8 +287,8 @@ def main():
         for env_name in environments_sub:
             print_message("Environment {0}".format(env_name))
 
-            save_data_run(False, env_name, init_eps, "largebatch")
-            save_data_run(True, env_name, init_eps, "largebatch")
+            save_data_run(False, env_name, init_eps, "smallbatch")
+            #save_data_run(True, env_name, init_eps, "smallbatch")
 
 if __name__ == '__main__':
     main()
