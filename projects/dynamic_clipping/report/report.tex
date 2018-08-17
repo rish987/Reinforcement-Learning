@@ -6,6 +6,7 @@
 \usepackage{algpseudocode}
 \usepackage{relsize}
 \usepackage{usenix}
+\setlength{\parindent}{0cm}
 \makeatletter
 \newcommand{\algmargin}{\the\ALG@thistlm}
 \makeatother
@@ -34,7 +35,6 @@ University of California, San Diego
 % Comment it out when you first submit the paper for review.
 \thispagestyle{empty}
 
-
 \subsection*{Abstract}
 Proximal Policy Optimization (PPO), a policy gradient algorithm drawing closely
 from the theory supporting Trust Region Policy Optimization (TRPO), has emerged
@@ -45,7 +45,7 @@ performance, it is vulnerable to problem-specific imbalances in its handling of
 positive and negative advantages. We investigate one such imbalance, addressing
 a discrepancy in expected penalty contributions of positive and negative
 estimators. By precisely calculating this discrepancy and minimizing it before
-each iteration, we empirically demonstrate that eliminating this discrepancy
+each model update, we empirically demonstrate that eliminating this discrepancy
 can improve the overall performance of PPO.
 
 \section{Introduction}
@@ -76,55 +76,115 @@ algorithms have the general form:
 Within this framework, the choice of a loss function is the key to an effective
 algorithm, and current research in reinforcement learning focuses particularly
 on finding new ways to represent this loss. A recent innovation in policy
-gradient methods is Trust Region Policy Optimization (TRPO), which approximates
+gradient methods is Trust Region Policy Optimization (TRPO) [TODO cite TRPO], which approximates
 the updates perfomed by an agent that uses the following loss function to 
 guarantee monotonic improvement in the policy's performance:
 \begin{equation}
     L_{\theta_{old}}(\theta) 
     - CD_{KL}^{max}(\theta, \theta_{old})
+    \label{eq:1}
 \end{equation}
-, where $C$ is a constant,
-$$L_{\theta_{old}}(\theta) =
-            \mathbb{E}_t \left[ 
-            \frac
-            {\pi_{\theta}(a_t | s_t)}
-            {\pi_{\theta_{old}} (a_t | s_t)}
-            A_t
-            \right]$$, and $A_t$ is the advantage at time $t$ [TODO cite].
+where $C$ is a constant,
+\begin{equation}
+L_{\theta_{old}}(\theta) =
+    \mathbb{E}_t \left[ 
+        \frac
+        {\pi_{\theta}(a_t | s_t)}
+        {\pi_{\theta_{old}} (a_t | s_t)}
+        A_t
+    \right]
+    \label{eq:2}
+\end{equation}
+and $A_t$ is the advantage at time $t$.
 In TRPO implementations, this loss function results in relatively
 small step sizes, so in practice the penalty term $CD_{KL}^{max}(\theta,
-\theta_{old})$ is removed from 
+\theta_{old})$ is removed from equation \eqref{eq:1}, and we instead maximize
+\eqref{eq:2} with a constraint on the KL divergence.
 
-More fascinating text. Features\endnote{Remember to use endnotes, not footnotes!} galore, plethora of promises.\\
+Implementations of TRPO generally have significant computational complexity
+relative to other RL algorithms, largely due to the need to calculate KL
+divergences and perform constraint optimization. To address this, a new
+algorithm based on the theory behind TRPO, Proximal Policy Optimization (PPO)
+[TODO cite PPO], was developed.
 
-\section{This is Another Section}
+Rather than maximizing \eqref{eq:2} subject to a constraint, PPO maximizes the
+following ``clipped'' loss function:
+\scriptsize
+\begin{equation}
+    L^{CLIP}(\theta) = \\
+    \mathbb{E}_t\left[ 
+    \min\left(r_tA_t, \text{clip}
+    (r_t, 1 - \epsilon, 1 + \epsilon)A_t\right)
+    \right]
+    \label{eq:3}
+\end{equation}
+\normalsize
+where $r_t(\theta) = 
+    \frac
+    {\pi_{\theta}(a_t | s_t)}
+    {\pi_{\theta_{old}} (a_t | s_t)}$.
 
-Some embedded literal typset code might 
-look like the following :
+This loss function can be maximized using standard optimization techniques and
+does not require constraint optimization, significantly simplifying
+implementation relative to TRPO. This loss function can be thought of as a
+heuristic approximation to the loss function from \eqref{eq:1}, where the
+minimization substitutes the penalty term.
 
-{\tt \small
-\begin{verbatim}
-#include <iostream>
-using namespace std;
-main()
-{
-cout << "Hello world \n";
-return 0;
-}
+PPO performs well in practice, in many cases outperforming TRPO. However, its
+simple equation does not allow for precise control over what penalties are
+actually introduced, and, as we will show, can exhibit problem-specific
+imbalances in the way positive and negative advantages are handled. 
 
-\end{verbatim}
-}
+\section{Expected Penalty Contributions}
 
-Now we're going to cite somebody.  Watch for the cite tag.
-Here it comes~\cite{ppo}.  
+\eqref{eq:3} can be split into positive and negative advantage cases as follows:
+\tiny
+\begin{equation}
+    L^{CLIP}(\theta) 
+    = \mathbb{E}_t\left[ 
+    \begin{cases}
+        \min\left(r_t, \text{clip}
+        (r_t, 1 + \epsilon)\right)A_t & A_t > 0\\
+        \max\left(r_t, \text{clip}
+        (r_t, 1 - \epsilon)\right)A_t & A_t < 0
+    \end{cases}\right]
+    \label{4}
+\end{equation}
+\normalsize
 
-Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.
+Now, let
+\begin{align*}
+    r_{t, CLIP}^+ &= 
+    \min\left(r_t, \text{clip}
+    (r_t, 1 + \epsilon)\right)\\
+    r_{t, CLIP}^- &= 
+    \max\left(r_t, \text{clip}
+    (r_t, 1 - \epsilon)\right)
+\end{align*}
 
-Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.
+It follows mathematically that $\mathbb{E}_t\left[ r_t \right] = 1$, because
+ratios are sampled according to the old policy distribution. Therefore, it must
+be the case that $\mathbb{E}_t\left[ r_{t, CLIP}^+ \right] < 1$ and 
+$\mathbb{E}_t\left[ r_{t, CLIP}^- \right] > 1$. As the new policy changes
+relative to the old policy, clipping becomes more frequent, generally causing
+these expectations to become smaller and larger, respectively. Assuming
+independence between ratios and advantages, the effect of this is to make
+positive advantages less positive and make negative advatages more negative.
+This is a reflection of how penalization occurs when a new policy is learned.
 
-Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.
+In practice, the assumption of independence between ratios and advantages is
+incorrect, because if these were independent, we would expect to see a
+monotonically decreasing loss at each model update. In reality, however, an
+optimizer will specifically work around this by assigning ratios to advantages
+such that the loss tends to increase at each model update. Therefore, these
+expected ratios do not suggest the actual proportional contributions of
+positive and negative advantages to the overall loss.
 
-Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.
+However, it seems likely that these expectations have a significant influence
+on how positive and negative advatages are considered in calculating the
+overall loss. Addressing these expectations and controlling their relative
+values will effect the loss that is calculated, and could have an influence on
+overall performance.
 
 \theendnotes
 
@@ -136,6 +196,5 @@ Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor i
 \bibitem{trpo} 
 \url{https://arxiv.org/abs/1502.05477}
 \end{thebibliography}
-
 
 \end{document}
