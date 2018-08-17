@@ -36,12 +36,22 @@ class PPOModel(object):
 
         self.clip_param_up = clip_param_up
         self.clip_param_down = clip_param_down
+        
+        # - set up clip parameter optimizer - 
+        self.eps_up = torch.tensor(self.clip_param_up, requires_grad=True,\
+                device=device)
+        self.eps_down = torch.tensor(self.clip_param_down, requires_grad=True,\
+                device=device)
+        learnable_params = [self.eps_down, self.eps_up]
+        learning_rate = 0.0001
+        self.clip_param_optimizer = optim.Adam(learnable_params, learning_rate)
+        # - 
+
 
         # set up optimizer
         self.optimizer = optim.Adam(self.trainable_parameters(), alpha)
 
         std = self.policy_net.std()[0]
-        self.dist_old = NormalUtil(torch.tensor([0.0], device=device), std)
 
     """
     Sets the old policy to have the same parameters as the new policy.
@@ -136,32 +146,22 @@ class PPOModel(object):
         dist = NormalUtil(mean, std)
         # - 
 
-        # - set up optimizer - 
-        eps_up = torch.tensor(self.clip_param_up, requires_grad=True,\
-                device=device)
-        eps_down = torch.tensor(self.clip_param_down, requires_grad=True,\
-                device=device)
-        learnable_params = [eps_down, eps_up]
-        learning_rate = 0.0001
-        optimizer = optim.Adam(learnable_params, learning_rate)
-        # - 
-
         # get initial values
         discrepancy, penalty_contributions = \
-            get_discrepancy_and_penalty_contributions(eps_down, eps_up, \
-            dist, self.dist_old, std) 
+            get_discrepancy_and_penalty_contributions(self.eps_down, \
+            self.eps_up, dist, std) 
 
         # set targets
         target_discrepancy = torch.tensor(0.0, device=device)
         target_penalty_contribution = \
             torch.tensor(penalty_contributions.item(), device=device)
 
-        loss_threshold = 1e-9
-        max_iters = 5000
+        loss_threshold = 1e-8
+        max_iters = 10000
 
         num_iters = 0
 
-        losses = np.array([loss_threshold + 1] * 3)
+        losses = np.array([loss_threshold + 1] * 1)
 
         while losses.mean() > loss_threshold:
         #for _ in range(20):
@@ -172,8 +172,8 @@ class PPOModel(object):
                 break;
             discrepancy_loss, penalty_contribution_loss, \
                 discrepancy, penalty_contributions = \
-                get_discrepancy_and_penalty_contribution_losses(eps_down,\
-                eps_up, dist, self.dist_old, target_discrepancy,\
+                get_discrepancy_and_penalty_contribution_losses(self.eps_down,\
+                self.eps_up, dist, target_discrepancy,\
                 target_penalty_contribution, std)
 
             loss = discrepancy_loss + penalty_contribution_loss
@@ -185,20 +185,24 @@ class PPOModel(object):
             #print("Total penalty contributions: {0}".format(\
             #    penalty_contributions.item()))
             #print()
-            assert (not math.isnan(eps_down.item())) and \
-                    (not math.isnan(eps_up.item()))
+            assert (not math.isnan(self.eps_down.item())) and \
+                    (not math.isnan(self.eps_up.item()))
 
-            optimizer.zero_grad()
+            self.clip_param_optimizer.zero_grad()
             loss.backward()
-            optimizer.step()
+            self.clip_param_optimizer.step()
 
             losses[0:-1] = losses[1:]
             losses[-1] = loss.item()
 
-        print (num_iters)
+        print(num_iters)
 
-        self.clip_param_up = eps_up.item()
-        self.clip_param_down = eps_down.item()
+        self.clip_param_up = self.eps_up.item()
+        self.clip_param_down = self.eps_down.item()
+
+    def decay_clip_param_learning_rate(self, rate):
+        for g in self.clip_param_optimizer.param_groups:
+            g['lr'] *= rate
         
     """
     Calculates the total loss with the given batch data.

@@ -1,6 +1,8 @@
 # File: grapher.py 
-# Author(s): Rishikesh Vaishnav, TODO
+# Author(s): Rishikesh Vaishnav
 # Created: 08/10/2018
+# Grapher utility program.
+
 import pickle
 import numpy as np
 import matplotlib.pyplot as plt;
@@ -75,7 +77,7 @@ def graph_comp_ret_ded(data_contr, data_exp, graph_name, eps, ):
 
     plt.tight_layout()
 
-    plt.savefig("../notes/grapher/largebatch/eps_{0}/experiment_{1}.pgf".format(eps, graph_name))
+    plt.savefig("../notes/grapher/smallbatch/eps_{0}/experiment_{1}.pgf".format(eps, graph_name))
 
 def graph_ded_contr(data):
     iterations = np.arange(data[GD_CHG].shape[0]) + 1
@@ -130,24 +132,24 @@ def graph_chgs_and_clips(data):
     plt.savefig(GRAPH_OUT)
     plt.show()
 
-environments_sub = ['InvertedPendulum-v2',\
+environments_sub = [\
     'InvertedDoublePendulum-v2', 'Hopper-v2',\
     'Swimmer-v2', 'Walker2d-v2']
 
 # y-axis range for printing results from environment
 env_to_range = {
         'InvertedPendulum-v2':(0, 1000),\
-            'InvertedDoublePendulum-v2':(0, 200), 'Hopper-v2':(0, 1300),\
-            'Swimmer-v2':(0, 60), 'Walker2d-v2':(0, 610)
+            'InvertedDoublePendulum-v2':(0, 200), 'Hopper-v2':(0, 1900),\
+            'Swimmer-v2':(0, 90), 'Walker2d-v2':(0, 1300)
         }
 
 def main():
     for eps in [4, 3, 2, 1]:
         print(eps)
         for env_name in environments_sub:
-            with open("data/largebatch/eps_{0}_data/data_contr_{1}.dat".format(eps, env_name), 'rb') as file:
+            with open("data/smallbatch/eps_{0}_data/data_contr_{1}.dat".format(eps, env_name), 'rb') as file:
                 data_contr = pickle.load(file)
-            with open("data/largebatch/eps_{0}_data/data_exp_{1}.dat".format(eps, env_name), 'rb') as file:
+            with open("data/smallbatch/eps_{0}_data/data_exp_{1}.dat".format(eps, env_name), 'rb') as file:
                 data_exp = pickle.load(file)
             graph_comp_ret_ded(data_contr, data_exp, graph_name=env_name, eps=eps)
 
