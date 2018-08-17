@@ -172,6 +172,11 @@ independence between ratios and advantages, the effect of this is to make
 positive advantages less positive and make negative advatages more negative.
 This is a reflection of how penalization occurs when a new policy is learned.
 
+We can define the ``expected penalty contributions'':
+$1 - \mathbb{E}_t[r_{t, CLIP}^+]$ and $\mathbb{E}_t[r_{t, CLIP}^-] - 1$. We
+would expect both of these values to become more positive as learning
+progresses in a single iteration.
+
 In practice, the assumption of independence between ratios and advantages is
 incorrect, because if these were independent, we would expect to see a
 monotonically decreasing loss at each model update. In reality, however, an
@@ -183,8 +188,24 @@ positive and negative advantages to the overall loss.
 However, it seems likely that these expectations have a significant influence
 on how positive and negative advatages are considered in calculating the
 overall loss. Addressing these expectations and controlling their relative
-values will effect the loss that is calculated, and could have an influence on
+values will affect the loss that is calculated, and could have an influence on
 overall performance.
+
+There is no reason to assume that the expected penalty contributions will agree
+with one another. We found that the both the rate at which these increased and
+the discrepancy between these two values was highly dependent on the choice of
+distribution to represent the policy.
+
+\section{Problem-Specific Expected Penalty Contribution Discrepancy}
+
+In order to investigate the effect of controlling the discrepancy between
+positive and negative expected penalty contributions, we focus our attention to
+a specific problem setting involving a continuous action space, with actions
+chosen according to a gaussian distribution with fixed standard deviation. From
+a simulated run, we observed that, for a single state, as the learned gaussian
+diverged from the original gaussian, the expected penalty contributions
+increased at different rates, resulting in a growing discrepancy between them
+(an animation of this process can be seen here)
 
 \theendnotes
 
