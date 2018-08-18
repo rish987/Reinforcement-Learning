@@ -1,5 +1,7 @@
 \documentclass[letterpaper,twocolumn,10pt]{article}
 \usepackage{epsfig,endnotes}
+\usepackage{pgfplots}
+\usepackage{pgf}
 \usepackage{hyperref}
 \usepackage{amsthm, amsmath, amssymb, verbatim, enumerate, mathtools, algorithm}
 \usepackage{algorithm}
@@ -25,7 +27,7 @@
 {\rm Student: Rishikesh Vaishnav}\\
 University of California, San Diego
 \and
-{\rm Mentor: Sicun Gao, Ph.D}\\
+{\rm Mentor: Sicun Gao, Ph.D.}\\
 University of California, San Diego
 }
 
@@ -48,16 +50,15 @@ estimators. By precisely calculating this discrepancy and minimizing it before
 each model update, we empirically demonstrate that eliminating this discrepancy
 can improve the overall performance of PPO.
 
-\section{Introduction}
+\section{Background}
 
 Note: This paper assumes knowledge of the common terms and concepts in
-reinforcement learning (see [TODO cite sutton and barto]).
+reinforcement learning (see \cite{DBLP:books/lib/SuttonB98}).
 
 Among current reinforcement learning (RL) algorithms, Policy Gradient methods
 have seen significant success at a wide range of tasks. These methods seek to
 learn performant policy distributions directly, rather than learning a value
-function to indirectly guide the policy [TODO cite paper covering policy
-gradient]. Using a policy $\pi_{\theta}(a)$ parameterized by $\theta$, these
+function to indirectly guide the policy. Using a policy $\pi_{\theta}(a)$ parameterized by $\theta$, these
 algorithms have the general form: 
 \begin{algorithm}[H]
     \caption{Generic Policy Gradient}
@@ -67,7 +68,6 @@ algorithms have the general form:
             \State $\theta_{old} \gets \theta$
             \parState{$rollout \gets (s, a, r)$ from multiple\\
             episodes following $\pi_{\theta}$}
-            % NOTE explain what a rollout is and what (s, a, r) are
 			\parState{Set $\theta$ to maximize the loss function $L(rollout,
 				\theta, \theta_{old})$}
         \EndWhile
@@ -76,12 +76,13 @@ algorithms have the general form:
 Within this framework, the choice of a loss function is the key to an effective
 algorithm, and current research in reinforcement learning focuses particularly
 on finding new ways to represent this loss. A recent innovation in policy
-gradient methods is Trust Region Policy Optimization (TRPO) [TODO cite TRPO], which approximates
+gradient methods is Trust Region Policy Optimization (TRPO) 
+\cite{DBLP:journals/corr/SchulmanLMJA15}, which approximates
 the updates perfomed by an agent that uses the following loss function to 
 guarantee monotonic improvement in the policy's performance:
 \begin{equation}
     L_{\theta_{old}}(\theta) 
-    - CD_{KL}^{max}(\theta, \theta_{old})
+    - CD_{KL}^{max}(\theta, \theta_{old}),
     \label{eq:1}
 \end{equation}
 where $C$ is a constant,
@@ -92,7 +93,7 @@ L_{\theta_{old}}(\theta) =
         {\pi_{\theta}(a_t | s_t)}
         {\pi_{\theta_{old}} (a_t | s_t)}
         A_t
-    \right]
+    \right],
     \label{eq:2}
 \end{equation}
 and $A_t$ is the advantage at time $t$.
@@ -105,17 +106,17 @@ Implementations of TRPO generally have significant computational complexity
 relative to other RL algorithms, largely due to the need to calculate KL
 divergences and perform constraint optimization. To address this, a new
 algorithm based on the theory behind TRPO, Proximal Policy Optimization (PPO)
-[TODO cite PPO], was developed.
+\cite{DBLP:journals/corr/SchulmanWDRK17}, was developed.
 
 Rather than maximizing \eqref{eq:2} subject to a constraint, PPO maximizes the
 following ``clipped'' loss function:
-\scriptsize
+\small
 \begin{equation}
     L^{CLIP}(\theta) = \\
     \mathbb{E}_t\left[ 
     \min\left(r_tA_t, \text{clip}
     (r_t, 1 - \epsilon, 1 + \epsilon)A_t\right)
-    \right]
+    \right],
     \label{eq:3}
 \end{equation}
 \normalsize
@@ -138,7 +139,7 @@ imbalances in the way positive and negative advantages are handled.
 \section{Expected Penalty Contributions}
 
 \eqref{eq:3} can be split into positive and negative advantage cases as follows:
-\tiny
+\scriptsize
 \begin{equation}
     L^{CLIP}(\theta) 
     = \mathbb{E}_t\left[ 
@@ -148,7 +149,7 @@ imbalances in the way positive and negative advantages are handled.
         \max\left(r_t, \text{clip}
         (r_t, 1 - \epsilon)\right)A_t & A_t < 0
     \end{cases}\right]
-    \label{4}
+    \label{eq:4}.
 \end{equation}
 \normalsize
 
@@ -159,7 +160,7 @@ Now, let
     (r_t, 1 + \epsilon)\right)\\
     r_{t, CLIP}^- &= 
     \max\left(r_t, \text{clip}
-    (r_t, 1 - \epsilon)\right)
+    (r_t, 1 - \epsilon)\right).
 \end{align*}
 
 It follows mathematically that $\mathbb{E}_t\left[ r_t \right] = 1$, because
@@ -193,7 +194,7 @@ overall performance.
 
 There is no reason to assume that the expected penalty contributions will agree
 with one another. We found that the both the rate at which these increased and
-the discrepancy between these two values was highly dependent on the choice of
+the discrepancy between these two values was dependent on the choice of
 distribution to represent the policy.
 
 \section{Problem-Specific Expected Penalty Contribution Discrepancy}
@@ -205,17 +206,195 @@ chosen according to a gaussian distribution with fixed standard deviation. From
 a simulated run, we observed that, for a single state, as the learned gaussian
 diverged from the original gaussian, the expected penalty contributions
 increased at different rates, resulting in a growing discrepancy between them
-(an animation of this process can be seen here)
+(see simulation here:
+\href{https://github.com/rish987/Reinforcement-Learning/blob/master/projects/dynamic_clipping/report/discrepancy.gif}{[link]}).
+This discrepancy also appears empirically, as shown in figure \ref{fig:1}.
+\begin{figure}
+    \centering
+    \scalebox{0.4}{\input{exp_deds.pgf}}
+    \caption{Empirical expected penalty contribution discrepancies. Expeceted
+    values were calculated after the final model update in each iteration. }
+    \label{fig:1}
+\end{figure}
+As suggested in the simulation, the empirical data shows that initial,
+high-learning phases are marked by a larger discrepancy and expected total
+penalty contribution than later, slower learning phases.
 
-\theendnotes
+\section{Addressing the Discrepancy}
 
-\begin{thebibliography}{9}
-\bibitem{ppo} 
-\url{https://arxiv.org/abs/1707.06347}
-\bibitem{gae} 
-\url{https://arxiv.org/abs/1506.02438}
-\bibitem{trpo} 
-\url{https://arxiv.org/abs/1502.05477}
-\end{thebibliography}
+Using the aforementioned gaussian policy model, we can precisely calculate the
+discrepancy at a certain state using the following equation:
+\begin{align*}
+    (1 - E[r_{t, CLIP}^{+}]) - (E[r_{t, CLIP}^{-}] - 1)\\
+    =
+    \epsilon
+    + 
+    (1 - \epsilon)
+    \int_{x^{-}}^{x^{+}}p(\mu_{old}, x)dx
+    \\
+    -\left(\int_{x^{-}}^{x^{+}}p(\mu, x)dx 
+    +2\epsilon
+    \int_{x^{+}}^{\infty}p(\mu_{old}, x)dx\right)
+\end{align*}
+where
+\begin{align*}
+    x^{+} &=
+    \frac{(\mu^2 - \mu_{old}^2)
+        + 2\sigma^2\ln\left(1 + \epsilon\right)}
+        {2(\mu - \mu_{old})},
+\end{align*}
+\begin{align*}
+    x^{-} &=
+    \frac{(\mu^2 - \mu_{old}^2)
+        + 2\sigma^2\ln\left(1 - \epsilon\right)}
+        {2(\mu - \mu_{old})},
+\end{align*}
+and $\mu$ and $\mu_{old}$ are the gaussian means predicted for this state for
+the new and old policies, respectively.
+
+On its own, this equation does not allow for close control over the
+discrepancy. Consider allowing for distinct upper and lower $\epsilon$,
+replacing the loss function with
+\small
+\begin{equation}
+    L^{CLIP}(\theta) = \\
+    \mathbb{E}_t\left[ 
+    \min\left(r_tA_t, \text{clip}
+    (r_t, 1 - \epsilon^-, 1 + \epsilon^+)A_t\right)
+    \right].
+    \label{eq:5}
+\end{equation}
+\normalsize
+We can now write the discrepancy as:
+\begin{equation}
+    \begin{aligned}
+        (1 - E[r_{t, CLIP}^{+}]) - (E[r_{t, CLIP}^{-}] - 1)\\
+        =
+        \epsilon^-
+        + 
+        (1 - \epsilon^-)
+        \int_{x^{-}}^{x^{+}}p(\mu_{old}, x)dx
+        \\
+        -\left(\int_{x^{-}}^{x^{+}}p(\mu, x)dx 
+        +(\epsilon^+ + \epsilon^-)
+        \int_{x^{+}}^{\infty}p(\mu_{old}, x)dx\right)
+    \end{aligned}
+    \label{eq:6}
+\end{equation}
+
+Changing the subtraction between expected penalty contributions to an addition,
+we can also calculate the total expected penalty contribution:
+\begin{equation}
+    \begin{aligned}
+        (1 - E[r_{t, CLIP}^{+}]) + (E[r_{t, CLIP}^{-}] - 1)\\
+        =
+        2\int_{x^{+}}^{\infty}
+        p(\mu, x)
+        dx -
+        (2 + \epsilon^+ - \epsilon^-)
+        \int_{x^{+}}^{\infty}p(\mu_{old}, x)dx\\
+        -
+        \epsilon^-
+        - 
+        (1 - \epsilon^-)
+        \int_{x^{-}}^{x^{+}}p(\mu_{old}, x)dx + 
+        \int_{x^{-}}^{x^{+}}p(\mu, x)dx
+    \end{aligned}
+    \label{eq:7}
+\end{equation}
+
+From \eqref{eq:6}, we can see that increasing $\epsilon^+$ and $\epsilon^-$ will
+generally have the effect of decreasing and increasing the discrepancy,
+respectively. We can define an algorithm that makes use of these equations
+in optimizing the clip parameters at every iteration. Given set initializations
+of $\epsilon^+$ and $\epsilon^-$, before calculating the loss function at each
+batch in each iteration, we can optimize these parameters to minimize
+this discrepancy while maintaining the total expected penalty contributions.
+
+\begin{algorithm}[H]
+    \caption{PPO with Dynamic Clipping}
+    \begin{algorithmic}
+        \State Initialize $\theta$ arbitrarily
+        \State Initialize $\epsilon^+$ and $\epsilon^-$
+        \State $\mu_{old} \gets 0$
+        \While{True}\Comment{loop forever}
+            \State $\theta_{old} \gets \theta$
+            \parState{$rollout \gets (s, a, r)$ from multiple episodes
+                following $\pi_{\theta}$}
+            \For{$batch$ from $rollout$}
+                \If{not first $batch$ in $rollout$}
+                    \parState {$\mu \gets$ the average absolute distance of the
+                    new policy's actions from the old policy's actions}
+
+                    \parState {Minimize \eqref{eq:6} while keeping \eqref{eq:7}
+                    constant}
+                \EndIf
+                \parState{Perform an optimization step on \eqref{eq:5}}
+            \EndFor
+        \EndWhile
+    \end{algorithmic}
+\end{algorithm}
+\section{Results}
+Our tests were run on standard MuJoCo environments from OpenAI Gym. We ran
+tests with the original PPO environment using $\epsilon$ values of $0.1, 0.2,
+0.3, 0.4$. We then ran tests with the new algorithm using these same $\epsilon$
+values as initializers for both $\epsilon^+$ and $\epsilon^-$. 
+
+Overall, looking at individual environments and comparing the best runs
+(as defined by end-of-training performance) between the control (original
+PPO) and experimental algorithms, we saw that, compared to the control
+algorithm, the experimental algorithm either performed approximately the same
+as the control or slightly better. This suggests an improvement in
+performance. In all cases, the algorithm successfully reduced the empirical
+expected discrepancies, however this did not have a consistent effect on the
+actual discrepancies when calculating the loss.
+
+Figures \ref{fig:2}, \ref{fig:3}, and
+\ref{fig:4} show the results for some environments. In these runs, the
+experimental and control algorithms were initialized with the same value of
+$\epsilon$.
+\begin{figure}
+    \centering
+    \scalebox{0.45}{\input{experiment_Walker2d-v2.pgf}}\\
+    \caption{Results: Walker2d-v2 environment}
+    \label{fig:2}
+\end{figure}
+\begin{figure}
+    \centering
+    \scalebox{0.45}{\input{experiment_Hopper-v2.pgf}}\\
+    \caption{Results: Hopper-v2 environment}
+    \label{fig:3}
+\end{figure}
+\begin{figure}
+    \centering
+    \scalebox{0.45}{\input{experiment_Swimmer-v2.pgf}}\\
+    \caption{Results: Swimmer-v2 environment}
+    \label{fig:4}
+\end{figure}
+
+\section{Conclusions}
+The results of this research so far suggest that, within the framework of a PPO
+algorithm, using two dynamic clipping parameters that are optimized to address
+problem-specific imbalances is a promising technique to improve the performance
+of PPO. 
+
+There are many different directions in which we can continue to develop this
+research. In terms of runtime and computational complexity, it would likely be
+useful to use a problem-independent heuristic method to minimize the
+discrepancy. Additionally, the discrepancy can likely be more effectively
+reduced by applying $\epsilon$-optimization on a per-state, rather than
+per-batch, basis. Another important consideration is how the expected
+discrepancy relates to the actual penalty contribution discrepancy.
+
+\section{Acknowledgements}
+I would like to thank my mentor, Dr. Sicun Gao, for being very attentive and
+supportive of my work, and for directing me to relevant research at the
+cutting-edge of reinforcement learning. I would also like to thank the Academic
+Enrichment Program at UCSD, especially Dr. Kirsten Kung, for hosting me during
+my work this summer as a member of the UC Scholars Program.
+
+%\theendnotes
+\bibliographystyle{plain}
+\bibliography{bib}
 
 \end{document}
