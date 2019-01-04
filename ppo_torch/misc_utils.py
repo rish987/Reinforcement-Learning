@@ -4,39 +4,17 @@
 # Description:
 # Miscellaneous utility functions.
 from imports import *
-# - graphing parameters -
-# default graph output file
-GRAPH_OUT = "graph_out.pgf"
-
-# -- graph data keys --
-GD_CHG = "chg"
-GD_AVG_NUM_UPCLIPS = "avg_num_upclips"
-GD_AVG_NUM_DOWNCLIPS = "avg_num_downclips"
-GD_AVG_UPCLIP_DED = "avg_upclip_ded"
-GD_AVG_DOWNCLIP_DED = "avg_downclip_ded"
-GD_EP_RETS = "ep_rets"
-GD_TIMESTEPS = "timesteps"
-GD_ACT_UPCLIP_DED = "act_upclip_ded"
-GD_ACT_DOWNCLIP_DED = "act_downclip_ded"
-
-graph_data_keys =\
-    [GD_CHG, GD_AVG_NUM_UPCLIPS, GD_AVG_NUM_DOWNCLIPS, GD_AVG_UPCLIP_DED,\
-    GD_AVG_DOWNCLIP_DED, GD_EP_RETS, GD_TIMESTEPS, GD_ACT_UPCLIP_DED,\
-    GD_ACT_DOWNCLIP_DED]
-# -- 
-# - 
-
-output_file = "temp_out"
+from constants import *
 
 def clear_out_file():
-    with open(output_file, 'w+') as file:
+    with open(OUTPUT_FILE, 'w+') as file:
         file.close()
 
 """
 Prints a message the the terminal and saves it to an output file.
 """
 def print_message(msg):
-    with open(output_file, 'a+') as file:
+    with open(OUTPUT_FILE, 'a+') as file:
         file.write("{0}\n".format(msg))
     print(msg)
 
@@ -52,16 +30,6 @@ def set_random_seed(seed, env=None):
     torch.manual_seed(seed)
     np.random.seed(seed)
     random.seed(seed)
-
-# - keys of rollout entries -
-# episode lengths in this rollout
-RO_EP_LEN = 'ep_lens'
-RO_EP_RET = 'ep_rets'
-RO_OB = 'obs'
-RO_AC = 'acs'
-RO_ADV_GL = 'advs_gl'
-RO_VAL_GL = 'vals_gl'
-# - 
 
 """
 Generic dataset with shuffle capabilities, for use in batch methods.
@@ -99,65 +67,11 @@ class Dataset(object):
 """
 Gets a tensor from a numpy array in a certain datatype.
 """
-def from_numpy_dt(arr, in_device=device):
-    return torch.from_numpy(arr).to(device=in_device, dtype=torch.float)
+def from_numpy_dt(arr, device):
+    return torch.from_numpy(arr).to(device, dtype=torch.float)
 
 """
 Gets a detached numpy array from a tensor.
 """
 def to_numpy_dt(tensor):
     return tensor.cpu().detach().numpy()
-
-"""
-Normal distribution with some additional features.
-"""
-class NormalUtil(normal.Normal):
-    def get_prob_between(self, down, up):
-        return self.cdf(up) - self.cdf(down)
-
-    def get_prob_above(self, val):
-        return 1 - self.cdf(val)
-
-    def get_prob_below(self, val):
-        return self.cdf(val)
-
-def get_x_lim_mult(eps_mult, mean, std):
-    return ((mean ** 2) + (2 * (std ** 2) * torch.log(1 +\
-            eps_mult))) / (2 * mean)
-
-def get_x_lim(eps, up, mean, std):
-    mult = 1 if up else -1
-    return get_x_lim_mult(mult * eps, mean, std)
-
-
-#TODO change with std change
-dist_zero = NormalUtil(torch.tensor([0.0], device=device), 1)
-
-def get_discrepancy_and_penalty_contributions(eps_down, eps_up, dist, std):
-    x_up = get_x_lim(eps_up, True, dist.mean, std)
-    x_down = get_x_lim(eps_down, False, dist.mean, std)
-
-    int_1 = dist_zero.get_prob_between(x_down, x_up)
-    int_2 = dist.get_prob_between(x_down, x_up)
-    int_3 = dist_zero.get_prob_above(x_up)
-    int_4 = dist.get_prob_above(x_up)
-
-    discrepancy = eps_down + ((1 - eps_down) * int_1) - \
-                (int_2 + ((eps_up + eps_down) * int_3))
-
-    penalty_contributions = \
-        (2 * int_4) - ((2 + eps_up - eps_down)* int_3) - eps_down - \
-        ((1 - eps_down) * int_1) + int_2
-
-    return discrepancy, penalty_contributions
-
-def get_discrepancy_and_penalty_contribution_losses(eps_down, eps_up, dist,\
-        target_discrepancy, target_penalty_contribution, std):
-    discrepancy, penalty_contributions =\
-        get_discrepancy_and_penalty_contributions(eps_down, eps_up, dist, std)
-
-    discrepancy_loss = (discrepancy - target_discrepancy) ** 2
-    penalty_contribution_loss = (penalty_contributions -\
-            target_penalty_contribution) ** 2
-    return discrepancy_loss, penalty_contribution_loss, \
-        discrepancy, penalty_contributions

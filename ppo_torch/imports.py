@@ -4,7 +4,6 @@
 # Description:
 # Necessary imported modules.
 import numpy as np
-# TODO necessary?
 import random
 import gym
 import torch
@@ -14,4 +13,3 @@ import torch.optim as optim
 import math
 import pickle
 from torch.distributions import normal
-device = torch.device("cuda")

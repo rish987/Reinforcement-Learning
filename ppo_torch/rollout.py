@@ -4,8 +4,8 @@
 # Description:
 # Functions relating to environment rollouts.
 from imports import *
-from misc_utils import RO_EP_LEN, RO_EP_RET, RO_OB, RO_AC, RO_ADV_GL,\
-    RO_VAL_GL
+# TODO properly use imports
+from constants import *
 
 """
 Using the given ordered rollout data, gets the Generalized Advantage Estimation 
@@ -44,6 +44,7 @@ Generator for length 'timesteps_per_rollout' rollouts under the given PPOModel
 'model', operating within the environment 'env'.  
 """
 def get_rollout(env, model, timesteps_per_rollout, gamma, lambda_):
+    # TODO add timestep to observation?
     # - initialize current values -
     # currently on first timestep of episode?
     new = True
@@ -55,7 +56,7 @@ def get_rollout(env, model, timesteps_per_rollout, gamma, lambda_):
     ep_ret = 0
     # current episode length
     ep_len = 0
-    # total total_timesteps rolled out over all runs
+    # total timesteps rolled out over all runs
     total_timesteps = 0
     # - 
 
