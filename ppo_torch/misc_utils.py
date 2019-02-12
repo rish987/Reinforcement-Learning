@@ -78,6 +78,59 @@ def to_numpy_dt(tensor):
     return tensor.cpu().detach().numpy()
 
 """
+Normalization utility class; normalizes values on a running basis.
+"""
+class Normalizer(object):
+    def __init__(self, shape):
+        self.epsilon = 1e-4
+        self.val_clip = 10
+
+        self.mean = np.zeros(shape, "float64")
+        self.var = np.ones(shape, "float64")
+
+        self.count = self.epsilon
+
+    """
+    Update mean, variance, and count, using given incremental value.
+    """
+    def update(self, val):
+        # calculate intermediate values
+        new_count = self.count + 1
+        delta = val - self.mean
+        M2 = (self.var * self.count) + (np.square(delta) * \
+                (self.count / new_count))
+
+        # reset running values
+        self.mean = self.mean + delta / new_count
+        self.var = ((self.var * self.count) + (np.square(delta) * \
+                (self.count / new_count))) / new_count
+        self.count = new_count
+
+    def shift(self, val):
+        return val - self.mean
+
+    def scale(self, val):
+        return val / np.sqrt(self.var + (self.epsilon ** 2))
+
+    def clip(self, val):
+        return np.clip(val, -self.val_clip, self.val_clip)
+
+    """
+    Get the normalized value according to the current mean and standard
+    deviation.
+    """
+    def normalize(self, val):
+        return self.clip(self.scale(self.shift(val)))
+
+    """
+    Update the running values according to the single value, and
+    return the normalized value.
+    """
+    def update_and_normalize(self, val):
+        self.update(val)
+        return self.normalize(val)
+
+"""
 Generic wrapper for environments, intended for extension.
 """
 class EnvWrapper(object):
@@ -94,50 +147,33 @@ class EnvWrapper(object):
 
     def reset(self):
         return self.env.reset()
+
 """
-Normalization wrapper for environments; normalizes observations based on those
-seen in training period.
+Normalization wrapper for environments; normalizes observations and returns
+based on those seen in training period.
 """
 class EnvNormalized(EnvWrapper):
     def __init__(self, env):
         super(EnvNormalized, self).__init__(env)
 
-        self.epsilon = 1e-4
-        self.obs_clip = 10
+        self.gamma = 0.99
 
-        self.mean = np.zeros(self.observation_space.shape, "float64")
-        self.var = np.ones(self.observation_space.shape, "float64")
-        self.count = self.epsilon
+        # discounted return of current timestep
+        self.ret = np.zeros(())
+
+        self.obs_norm = Normalizer(self.observation_space.shape)
+        self.ret_norm = Normalizer(())
 
     def step(self, ac):
-        obs, reward, done, info = self.env.step(ac)
-        return self.normalize(obs), reward, done, info
+        obs, rew, done, info = self.env.step(ac)
+
+        # get this timestep's discounted return
+        self.ret = rew + (self.gamma * self.ret)
+        self.ret_norm.update(self.ret)
+
+        return self.obs_norm.update_and_normalize(obs), \
+            self.ret_norm.scale(rew), done, info
 
     def reset(self):
-        return self.normalize(self.env.reset())
-
-    """
-    Update mean, variance, and count, using given incremental observation.
-    """
-    def update(self, obs):
-        # calculate intermediate values
-        new_count = self.count + 1
-        delta = obs - self.mean
-        M2 = (self.var * self.count) + (np.square(delta) * \
-                (self.count / new_count))
-
-        # reset running values
-        self.mean = self.mean + delta / new_count
-        self.var = ((self.var * self.count) + (np.square(delta) * \
-                (self.count / new_count))) / new_count
-        self.count = new_count
-
-    """
-    Update the running values according to the single observation, and
-    return the normalized observation.
-    """
-    def normalize(self, obs):
-        self.update(obs)
-        unclipped = (obs - self.mean) / np.sqrt(self.var + \
-                (self.epsilon ** 2))
-        return np.clip(unclipped, -self.obs_clip, self.obs_clip)
+        self.ret = np.zeros(())
+        return self.obs_norm.update_and_normalize(self.env.reset())
