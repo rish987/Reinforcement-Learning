@@ -7,7 +7,7 @@
 from imports import *
 from constants import *
 from misc_utils import set_random_seed, Dataset, from_numpy_dt, \
-    graph_data_keys, print_message, clear_out_file
+    graph_data_keys, print_message, clear_out_file, EnvNormalized
 from ppo_model import PPOModel
 from rollout import get_rollout
 
@@ -30,7 +30,7 @@ g_num_timesteps = 300000
 # parameters)
 g_timesteps_per_rollout = 2048
 # random seed
-g_seed = 0
+g_seed = 1
 # -- 
 
 # -- SGD parameters --
@@ -60,6 +60,7 @@ def train(hidden_layer_size, num_hidden_layers, num_timesteps, \
     # - setup -
     # set up environment 
     env = gym.make(env_name)
+    env = EnvNormalized(env)
 
     # set random seeds
     set_random_seed(seed, env)

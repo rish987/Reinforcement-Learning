@@ -1,4 +1,16 @@
+- normalize returns
+
+- make sure we only collect mean and variance from training period in
+EnvNormalized
+
 - check for rogue tensors (not attached to any particular device)
 
 Questions
 - 
+
+Wrapping env:
+- env.seed(seed)
+- env.step(ac)
+- env.reset()
+- env.observation_space
+- env.action_space

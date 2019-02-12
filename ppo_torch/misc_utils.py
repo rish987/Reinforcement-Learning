@@ -28,6 +28,7 @@ def set_random_seed(seed, env=None):
         env.seed(seed)
 
     torch.manual_seed(seed)
+    torch.cuda.manual_seed_all(seed)
     np.random.seed(seed)
     random.seed(seed)
 
@@ -75,3 +76,68 @@ Gets a detached numpy array from a tensor.
 """
 def to_numpy_dt(tensor):
     return tensor.cpu().detach().numpy()
+
+"""
+Generic wrapper for environments, intended for extension.
+"""
+class EnvWrapper(object):
+    def __init__(self, env):
+        self.env = env
+        self.observation_space = env.observation_space
+        self.action_space = env.action_space
+
+    def seed(self, seed):
+        return self.env.seed(seed)
+
+    def step(self, ac):
+        return self.env.step(ac)
+
+    def reset(self):
+        return self.env.reset()
+"""
+Normalization wrapper for environments; normalizes observations based on those
+seen in training period.
+"""
+class EnvNormalized(EnvWrapper):
+    def __init__(self, env):
+        super(EnvNormalized, self).__init__(env)
+
+        self.epsilon = 1e-4
+        self.obs_clip = 10
+
+        self.mean = np.zeros(self.observation_space.shape, "float64")
+        self.var = np.ones(self.observation_space.shape, "float64")
+        self.count = self.epsilon
+
+    def step(self, ac):
+        obs, reward, done, info = self.env.step(ac)
+        return self.normalize(obs), reward, done, info
+
+    def reset(self):
+        return self.normalize(self.env.reset())
+
+    """
+    Update mean, variance, and count, using given incremental observation.
+    """
+    def update(self, obs):
+        # calculate intermediate values
+        new_count = self.count + 1
+        delta = obs - self.mean
+        M2 = (self.var * self.count) + (np.square(delta) * \
+                (self.count / new_count))
+
+        # reset running values
+        self.mean = self.mean + delta / new_count
+        self.var = ((self.var * self.count) + (np.square(delta) * \
+                (self.count / new_count))) / new_count
+        self.count = new_count
+
+    """
+    Update the running values according to the single observation, and
+    return the normalized observation.
+    """
+    def normalize(self, obs):
+        self.update(obs)
+        unclipped = (obs - self.mean) / np.sqrt(self.var + \
+                (self.epsilon ** 2))
+        return np.clip(unclipped, -self.obs_clip, self.obs_clip)
