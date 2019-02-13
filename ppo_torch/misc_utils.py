@@ -177,3 +177,12 @@ class EnvNormalized(EnvWrapper):
     def reset(self):
         self.ret = np.zeros(())
         return self.obs_norm.update_and_normalize(self.env.reset())
+
+"""
+Initializes the given neural network layer using an orthogonal distribution for
+the weights and zeroes for the biases.
+"""
+def layer_init(module):
+    nn.init.orthogonal_(module.weight.data, gain=np.sqrt(2))
+    nn.init.constant_(module.bias.data, 0.0)
+    return module

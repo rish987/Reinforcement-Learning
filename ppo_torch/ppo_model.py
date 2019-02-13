@@ -5,7 +5,7 @@
 # Class (PPOModel) that encapsulates relevant PPO parameters and procedures.
 from imports import *
 from constants import *
-from misc_utils import from_numpy_dt, to_numpy_dt, print_message
+from misc_utils import from_numpy_dt, to_numpy_dt, print_message, layer_init
 
 device = torch.device("cuda")
 
@@ -16,8 +16,9 @@ class PPOModel(object):
     def __init__(self, env, num_hidden_layers, hidden_layer_size, alpha, \
         clip_param_up, clip_param_down):
         # - set up networks -
+        # TODO use lambda here to avoid repeated code
         self.policy_net = \
-            PolicyNetVar(env, num_hidden_layers, hidden_layer_size, False,
+            PolicyNetVar(env, num_hidden_layers, hidden_layer_size, True,\
             device)
 
         self.policy_net_cpu = \
@@ -25,14 +26,16 @@ class PPOModel(object):
             "cpu")
 
         self.policy_net_old = \
-            PolicyNetVar(env, num_hidden_layers, hidden_layer_size, True,\
+            PolicyNetVar(env, num_hidden_layers, hidden_layer_size, False,\
             device)
 
         self.value_net = \
-            GeneralNet(env, num_hidden_layers, hidden_layer_size, 1).to(device)
+            GeneralNet(env, num_hidden_layers, hidden_layer_size, 1, \
+            True).to(device)
 
         self.value_net_cpu = \
-            GeneralNet(env, num_hidden_layers, hidden_layer_size, 1).to("cpu")
+            GeneralNet(env, num_hidden_layers, hidden_layer_size, 1, \
+            False).to("cpu")
         # - 
 
         self.clip_param_up = clip_param_up
@@ -128,20 +131,15 @@ class PPOModel(object):
 Neural network and standard deviation for the policy function.
 """
 class PolicyNetVar(object):
-    def __init__(self, env, num_hidden_layers, hidden_layer_size, fixed, \
+    def __init__(self, env, num_hidden_layers, hidden_layer_size, training, \
         device_in):
         self.device = device_in
         self.policy_net = GeneralNet(env, num_hidden_layers, \
-            hidden_layer_size, env.action_space.shape[0]).to(self.device)
+            hidden_layer_size, env.action_space.shape[0], \
+            training).to(self.device)
         # TODO which requires_grad are necessary? And why zero variance?
         self.logstd = nn.Parameter(torch.zeros(env.action_space.shape[0], \
             requires_grad=False, device=self.device), requires_grad=False)
-
-        if fixed:
-            # prevent old policy from being considered in update
-            for param in self.policy_net.parameters():
-                param.requires_grad = False
-
 
     """
     Copies the parameters from the specified PolicyNetVar into this one.
@@ -192,32 +190,47 @@ class PolicyNetVar(object):
             + torch.sum(self.logstd)
 
         return -ret
+
 """
 Neural network for the policy/value/etc. function.
 """
 class GeneralNet(nn.Module):
     def __init__(self, env, num_hidden_layers, hidden_layer_size,\
-            output_size):
+            output_size, training):
         super(GeneralNet, self).__init__()
 
         # to hold fully connected layers
         layers = [];
 
-        # TODO use correct initializers?
-        
+        # shorten syntax for creating a new layer and specially initializing it
+        # if necessary
+        init_layer_op = lambda m: layer_init(m) if training else m
+        new_layer_op = lambda in_size, out_size: \
+            init_layer_op(nn.Linear(in_size,out_size))
+
         # add first layer, coming directly from the observation
-        layers.append(nn.Linear(env.observation_space.shape[0],\
+        layers.append(new_layer_op(env.observation_space.shape[0],\
             hidden_layer_size))
 
         # go through all remaining layers
-        for _ in range(num_hidden_layers - 1):
-            layers.append(nn.Linear(hidden_layer_size, hidden_layer_size))
+        for _ in range(num_hidden_layers):
+            layers.append(new_layer_op(hidden_layer_size, hidden_layer_size))
 
         # the output layer is an action-space-dimensional value
-        layers.append(nn.Linear(hidden_layer_size, \
-            output_size))
+        layers.append(new_layer_op(hidden_layer_size, output_size))
 
         self.fc = nn.ModuleList(layers)
+
+        if not training:
+            # prevent old policy from being considered in update
+            self.fix()
+
+    """
+    Disable gradient for the parameters of this module.
+    """
+    def fix(self):
+        for param in self.parameters():
+            param.requires_grad = False
 
     def forward(self, x):
         for layer_i in range(len(self.fc) - 1):

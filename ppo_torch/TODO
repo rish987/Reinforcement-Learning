@@ -1,4 +1,5 @@
 - make sure we only collect mean and variance from training period in
 EnvNormalized
+- fix imports (no more "import *")
 
 - check for rogue tensors (not attached to any particular device)
