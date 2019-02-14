@@ -182,7 +182,7 @@ class EnvNormalized(EnvWrapper):
 Initializes the given neural network layer using an orthogonal distribution for
 the weights and zeroes for the biases.
 """
-def layer_init(module):
-    nn.init.orthogonal_(module.weight.data, gain=np.sqrt(2))
+def layer_init(module, gain):
+    nn.init.orthogonal_(module.weight.data, gain=gain)
     nn.init.constant_(module.bias.data, 0.0)
     return module
