@@ -67,7 +67,7 @@ def train(hidden_layer_size, num_hidden_layers, num_timesteps, \
 
     # create relevant PPO networks
     model = PPOModel(env, num_hidden_layers, hidden_layer_size, alpha,\
-            clip_param_up, clip_param_down)
+            clip_param_up, clip_param_down, torch.device("cuda"))
 
     # total number of timesteps trained so far
     timesteps = 0

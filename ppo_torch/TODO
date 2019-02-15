@@ -1,3 +1,4 @@
+- remove need for CPU networks by storing evaluations in table during rollout
 - make sure we only collect mean and variance from training period in
 EnvNormalized
 - fix imports (no more "import *")
