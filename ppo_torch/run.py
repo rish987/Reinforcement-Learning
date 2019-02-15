@@ -7,7 +7,7 @@
 from imports import *
 from constants import *
 from misc_utils import set_random_seed, Dataset, from_numpy_dt, \
-    graph_data_keys, print_message, clear_out_file, EnvNormalized
+    graph_data_keys, print_message, clear_out_file, EnvNormalized, EnvToTorch
 from ppo_model import PPOModel
 from rollout import get_rollout
 
@@ -57,17 +57,22 @@ Trains a PPO agent according to given parameters and reports results.
 def train(hidden_layer_size, num_hidden_layers, num_timesteps, \
     timesteps_per_rollout, seed, clip_param_up, clip_param_down, num_epochs, \
     alpha, batch_size, gamma, lambda_, env_name):
+
+    # TODO make into a file constant (prefixed with "g_")?
+    device = torch.device("cuda")
+
     # - setup -
     # set up environment 
     env = gym.make(env_name)
     env = EnvNormalized(env)
+    env = EnvToTorch(env, device)
 
     # set random seeds
     set_random_seed(seed, env)
 
     # create relevant PPO networks
     model = PPOModel(env, num_hidden_layers, hidden_layer_size, alpha,\
-            clip_param_up, clip_param_down, torch.device("cuda"))
+            clip_param_up, clip_param_down, device)
 
     # total number of timesteps trained so far
     timesteps = 0
@@ -80,14 +85,9 @@ def train(hidden_layer_size, num_hidden_layers, num_timesteps, \
     # continue training until timestep limit is reached
     while (timesteps < num_timesteps):
         # - SGD setup - 
-        model.update_cpu_networks()
-
         # get a rollout under this model for training
         rollout = rollout_gen.__next__()
         
-        # update old policy function to new policy function
-        model.update_old_pol()
-
         # center advatages
         rollout[RO_ADV_GL] = (rollout[RO_ADV_GL] - rollout[RO_ADV_GL].mean()) 
 

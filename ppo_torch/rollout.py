@@ -45,6 +45,9 @@ Generator for length 'timesteps_per_rollout' rollouts under the given PPOModel
 """
 def get_rollout(env, model, timesteps_per_rollout, gamma, lambda_):
     # TODO add timestep to observation?
+
+    device = model.device
+
     # - initialize current values -
     # currently on first timestep of episode?
     new = True
@@ -66,13 +69,13 @@ def get_rollout(env, model, timesteps_per_rollout, gamma, lambda_):
     # lengths of all episodes in this rollout
     ep_lens = []
 
-    news = np.zeros(timesteps_per_rollout)
-    obs = np.array([np.zeros(env.observation_space.shape[0])] * \
-        timesteps_per_rollout)
-    acs = np.array([np.zeros(env.action_space.shape[0])] * \
-        timesteps_per_rollout)
-    rews = np.zeros(timesteps_per_rollout)
-    vals = np.zeros(timesteps_per_rollout)
+    news = torch.zeros(timesteps_per_rollout).to(device=device)
+    obs = torch.zeros(timesteps_per_rollout, env.observation_space.shape[0]\
+        ).to(device=device)
+    acs = torch.zeros(timesteps_per_rollout, env.action_space.shape[0]\
+        ).to(device=device)
+    rews = torch.zeros(timesteps_per_rollout).to(device=device)
+    vals = torch.zeros(timesteps_per_rollout).to(device=device)
     # - 
 
     # indefinitely continue generating rollouts when called
@@ -109,7 +112,7 @@ def get_rollout(env, model, timesteps_per_rollout, gamma, lambda_):
         next_ob, rew, next_new, _ = env.step(ac)
 
         # - set history entries -
-        news[timestep] = new
+        news[timestep] = 1 if new else 0
         obs[timestep] = ob
         acs[timestep] = ac
         rews[timestep] = rew

@@ -75,7 +75,7 @@ def from_numpy_dt(arr, device):
 Gets a detached numpy array from a tensor.
 """
 def to_numpy_dt(tensor):
-    return tensor.cpu().detach().numpy()
+    return tensor.cpu().numpy()
 
 """
 Normalization utility class; normalizes values on a running basis.
@@ -177,6 +177,23 @@ class EnvNormalized(EnvWrapper):
     def reset(self):
         self.ret = np.zeros(())
         return self.obs_norm.update_and_normalize(self.env.reset())
+
+"""
+Pytorch wrapper for environments; encapsulates observations in Pytorch tensors.
+"""
+class EnvToTorch(EnvWrapper):
+    def __init__(self, env, device):
+        super(EnvToTorch, self).__init__(env)
+        self.device=device
+
+    def step(self, ac):
+        ac = to_numpy_dt(ac)
+        obs, rew, done, info = self.env.step(ac)
+
+        return from_numpy_dt(obs, self.device), rew, done, info
+
+    def reset(self):
+        return from_numpy_dt(self.env.reset(), self.device)
 
 """
 Initializes the given neural network layer using an orthogonal distribution for

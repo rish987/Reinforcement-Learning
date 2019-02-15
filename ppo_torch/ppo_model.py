@@ -18,14 +18,9 @@ class PPOModel(object):
 
         # - set up networks -
         # get training models
-        self.policy = Policy(env, num_hidden_layers, hidden_layer_size, True,\
+        self.policy = Policy(env, num_hidden_layers, hidden_layer_size,
                 self.device)
         self.value_net = self.policy.policy_net.value_net
-
-        # get dummy models
-        self.policy_cpu = Policy(device_in="cpu")
-        self.policy_old = Policy(device_in=self.device)
-        self.value_net_cpu = GeneralNet(device_in="cpu")
         # - 
 
         self.clip_param_up = clip_param_up
@@ -33,12 +28,6 @@ class PPOModel(object):
         
         # set up optimizer
         self.optimizer = optim.Adam(self.trainable_parameters(), alpha)
-
-    """
-    Sets the old policy to have the same parameters as the new policy.
-    """
-    def update_old_pol(self):
-        self.policy_old.copy_params_fix(self.policy)
 
     """
     Generator for all parameters to be trained by this model.
@@ -51,31 +40,21 @@ class PPOModel(object):
 
     """
     Executes the policy function stochastically on the given observation 'ob'.
-    Runs on CPU-based policy network to avoid wasteful overhead.
     """
     def eval_policy_var_single(self, ob):
-        return self.eval_single(self.policy_cpu, ob, True)
+        return self.eval_single(self.policy, ob, True)
 
     """
     Executes the value function on the given observation 'ob'.
-    Runs on CPU-based policy network to avoid wasteful overhead.
     """
     def eval_value_single(self, ob):
-        return self.eval_single(self.value_net_cpu, ob)
+        return self.eval_single(self.value_net, ob)
 
     """
     Executes the specified function on the given observation 'ob'.
-    Runs on CPU to avoid wasteful overhead.
     """
     def eval_single(self, network, ob, *args):
-        return to_numpy_dt(network(from_numpy_dt(ob, "cpu"), *args))
-
-    """
-    Updates the CPU networks with the current parameters.
-    """
-    def update_cpu_networks(self):
-        self.policy_cpu.copy_params_fix(self.policy)
-        self.value_net_cpu.load_state_dict(self.value_net.state_dict())
+        return network(ob, *args)
 
     """
     Updates the parameters of the model according to the Adam framework.
@@ -121,42 +100,17 @@ class PPOModel(object):
 Neural network and standard deviation for the policy function.
 """
 class Policy(object):
-    def __init__(self, env=None, num_hidden_layers=None,\
-        hidden_layer_size=None, training=False, device_in=None):
+    def __init__(self, env, num_hidden_layers, hidden_layer_size, device_in):
         self.device = device_in
+
         # randomly initalize networks
-        if training:
-            self.policy_net = GeneralNet(env, num_hidden_layers, \
-                hidden_layer_size, env.action_space.shape[0], \
-                True, True, self.device)
-            self.logstd = nn.Parameter(torch.zeros(env.action_space.shape[0], \
-                device=self.device))
-            self.logstd.requires_grad = True
-        # create dummy networks to copy something else into
-        else:
-            self.policy_net = GeneralNet(device_in=self.device)
-            self.logstd = nn.Parameter()
-            # TODO necessary?
-            self.fix()
+        self.policy_net = GeneralNet(env, num_hidden_layers, \
+            hidden_layer_size, env.action_space.shape[0], True, self.device)
 
-    """
-    Copies the parameters from the specified Policy into this one, and labels
-    this Policy's parameters as fixed.
-    """
-    def copy_params_fix(self, other):
-        # copy logstd parameter
-        self.logstd.data = other.logstd.clone().to(self.device)
-        # copy all other parameters
-        self.policy_net.load_state_dict(other.policy_net.state_dict())
-        # TODO necessary?
-        self.fix()
-
-    """
-    Disable gradient for the parameters of this Policy.
-    """
-    def fix(self):
-        self.policy_net.fix();
-        self.logstd.requires_grad = False
+        # initialize standard deviation as zero
+        self.logstd = nn.Parameter(torch.zeros(env.action_space.shape[0], \
+            device=self.device))
+        self.logstd.requires_grad = True
 
     """
     Returns an action, stochastically via gaussian or deterministically, given
@@ -168,8 +122,9 @@ class Policy(object):
             return self.policy_net(ob)
         # output mean with some gaussian noise according to self.logstd
         else:
-            return torch.distribitions.Normal(self.policy_net(ob),\
-                self.std())
+            return torch.distributions.Normal(self.policy_net(ob),\
+                self.std()).sample()
+
     """
     Returns all of this policy's parameters.
     """
@@ -201,53 +156,41 @@ class Policy(object):
 Neural network for the policy/value/etc. function.
 """
 class GeneralNet(nn.Module):
-    def __init__(self, env=None, num_hidden_layers=None,\
-            hidden_layer_size=None, output_size=None, training=False,\
-            create_value_net=False, device_in=None):
+    def __init__(self, env, num_hidden_layers, hidden_layer_size, \
+            output_size, create_value_net, device_in):
         super(GeneralNet, self).__init__()
 
-        # this is not a dummy network
-        if training:
-            # to hold fully connected layers
-            layers = [];
+        # to hold fully connected layers
+        layers = [];
 
-            # shorten syntax for creating a new layer and specially
-            # initializing it if necessary
-            init_layer_op = lambda m, gain: layer_init(m, gain) if training \
-                else m
-            new_layer_op = lambda in_size, out_size, gain: \
-                init_layer_op(nn.Linear(in_size, out_size), gain)
+        # shorten syntax for creating a new layer and specially
+        # initializing it if necessary
+        new_layer_op = lambda in_size, out_size, gain: \
+            layer_init(nn.Linear(in_size, out_size), gain)
 
-            # add first layer, coming directly from the observation
-            layers.append(new_layer_op(env.observation_space.shape[0],\
+        # add first layer, coming directly from the observation
+        layers.append(new_layer_op(env.observation_space.shape[0],\
+            hidden_layer_size, np.sqrt(2)))
+
+        # go through all remaining layers
+        for _ in range(num_hidden_layers - 1):
+            layers.append(new_layer_op(hidden_layer_size, \
                 hidden_layer_size, np.sqrt(2)))
 
-            # go through all remaining layers
-            for _ in range(num_hidden_layers - 1):
-                layers.append(new_layer_op(hidden_layer_size, \
-                    hidden_layer_size, np.sqrt(2)))
+        # option to construct value net here for purpose of initialization
+        # value alignment with ikostrikov code
+        if (create_value_net):
+            self.value_net = \
+                GeneralNet(env, num_hidden_layers, hidden_layer_size, 1, \
+                False, device_in)
 
-            # option to construct value net here for purpose of
-            # initialization value alignment with other code
-            if (create_value_net):
-                self.value_net = \
-                    GeneralNet(env, num_hidden_layers, hidden_layer_size, 1, \
-                    True, False, device_in)
+        # the output layer is an action-space-dimensional value
+        layers.append(new_layer_op(hidden_layer_size, output_size,
+            1 if create_value_net else np.sqrt(2)))
 
-            # the output layer is an action-space-dimensional value
-            layers.append(new_layer_op(hidden_layer_size, output_size,
-                1 if create_value_net else np.sqrt(2)))
-
-            self.fc = nn.ModuleList(layers)
+        self.fc = nn.ModuleList(layers)
 
         self.to(device_in)
-
-    """
-    Disable gradient for the parameters of this module.
-    """
-    def fix(self):
-        for param in self.parameters():
-            param.requires_grad = False
 
     def forward(self, x):
         for layer_i in range(len(self.fc) - 1):
