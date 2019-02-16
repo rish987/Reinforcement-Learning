@@ -149,6 +149,20 @@ class EnvWrapper(object):
         return self.env.reset()
 
 """
+Casting wrapper for environments; casts observations to intended types.
+"""
+class EnvCast(EnvWrapper):
+    def __init__(self, env):
+        super(EnvCast, self).__init__(env)
+
+    def step(self, ac):
+        obs, rew, done, info = self.env.step(ac)
+        return obs.astype(self.observation_space.dtype), rew, done, info
+
+    def reset(self):
+        return self.env.reset().astype(self.observation_space.dtype)
+
+"""
 Normalization wrapper for environments; normalizes observations and returns
 based on those seen in training period.
 """

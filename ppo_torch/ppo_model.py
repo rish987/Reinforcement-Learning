@@ -171,11 +171,13 @@ class GeneralNet(nn.Module):
         # add first layer, coming directly from the observation
         layers.append(new_layer_op(env.observation_space.shape[0],\
             hidden_layer_size, np.sqrt(2)))
+        layers.append(nn.Tanh())
 
         # go through all remaining layers
         for _ in range(num_hidden_layers - 1):
             layers.append(new_layer_op(hidden_layer_size, \
                 hidden_layer_size, np.sqrt(2)))
+            layers.append(nn.Tanh())
 
         # option to construct value net here for purpose of initialization
         # value alignment with ikostrikov code
@@ -192,8 +194,8 @@ class GeneralNet(nn.Module):
 
         self.to(device_in)
 
-    def forward(self, x):
-        for layer_i in range(len(self.fc) - 1):
-            x = F.tanh(self.fc[layer_i](x))
-        x = self.fc[-1](x)
+    def forward(self, inputs):
+        x = inputs
+        for layer_i in range(len(self.fc)):
+            x = self.fc[layer_i](x)
         return x

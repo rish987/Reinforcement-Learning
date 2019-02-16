@@ -7,7 +7,8 @@
 from imports import *
 from constants import *
 from misc_utils import set_random_seed, Dataset, from_numpy_dt, \
-    graph_data_keys, print_message, clear_out_file, EnvNormalized, EnvToTorch
+    graph_data_keys, print_message, clear_out_file, EnvNormalized, EnvToTorch,\
+    EnvCast
 from ppo_model import PPOModel
 from rollout import get_rollout
 
@@ -64,6 +65,7 @@ def train(hidden_layer_size, num_hidden_layers, num_timesteps, \
     # - setup -
     # set up environment 
     env = gym.make(env_name)
+    env = EnvCast(env)
     env = EnvNormalized(env)
     env = EnvToTorch(env, device)
 

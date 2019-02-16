@@ -102,12 +102,12 @@ def get_rollout(env, model, timesteps_per_rollout, gamma, lambda_):
             ep_rets = []
             ep_lens = []
 
+        # timestep in this rollout
+        timestep = (total_timesteps % timesteps_per_rollout)
+
         # get the action that should be taken at the current observation
         # according to the model
         ac = model.eval_policy_var_single(ob)
-
-        # timestep in this rollout
-        timestep = (total_timesteps % timesteps_per_rollout)
 
         next_ob, rew, next_new, _ = env.step(ac)
 
